@@ -1,12 +1,20 @@
 import { mailDataHelpers } from "@mail/../tests/mock_server/mail_mock_server";
 import { fields, models, serverState } from "@web/../tests/web_test_helpers";
-import { DEFAULT_MAIL_VIEW_ID } from "./constants";
 
 export class MailScheduledMessage extends models.ServerModel {
+<<<<<<< cc879e5d0e710248679eabb5a5df3dc601523518
     _inherit = ["mail.scheduled.message"];
     _views = {
         [`form,${DEFAULT_MAIL_VIEW_ID}`]: `<form/>`,
     };
+||||||| c1d88949a3c305b425ab3a862741ebab7b7cd344
+    _inherit = "mail.scheduled.message";
+    _views = {
+        [`form,${DEFAULT_MAIL_VIEW_ID}`]: `<form/>`,
+    };
+=======
+    _inherit = "mail.scheduled.message";
+>>>>>>> 984c0bcd2d39a56612112314b319befb282781fe
 
     author_id = fields.Generic({ default: () => serverState.partnerId });
 

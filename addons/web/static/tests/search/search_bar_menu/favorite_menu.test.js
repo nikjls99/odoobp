@@ -73,8 +73,61 @@ test("simple rendering with no favorite", async () => {
     expect(`.o_favorite_menu .o_add_favorite`).toHaveCount(1);
 });
 
+<<<<<<< cc879e5d0e710248679eabb5a5df3dc601523518
 test("edit an active favorite", async () => {
     const irFilters = [
+||||||| c1d88949a3c305b425ab3a862741ebab7b7cd344
+test("delete an active favorite", async () => {
+    class ToyController extends Component {
+        static components = { SearchBar };
+        static template = xml`<div><SearchBar/></div>`;
+        static props = ["*"];
+
+        setup() {
+            expect(this.props.domain).toEqual([["foo", "=", "qsdf"]]);
+            onWillUpdateProps((nextProps) => {
+                expect.step("props updated");
+                expect(nextProps.domain).toEqual([]);
+            });
+        }
+    }
+
+    patchWithCleanup(serverState.view_info, {
+        toy: { multi_record: true, display_name: "Toy", icon: "fab fa-android" },
+    });
+    viewsRegistry.add("toy", {
+        type: "toy",
+        Controller: ToyController,
+    });
+    after(() => viewsRegistry.remove("toy"));
+    Foo._views.toy = `<toy/>`;
+    Foo._filters = [
+=======
+test("delete an active favorite", async () => {
+    class ToyController extends Component {
+        static components = { SearchBar };
+        static template = xml`<div><SearchBar/></div>`;
+        static props = ["*"];
+
+        setup() {
+            expect(this.props.domain).toEqual([["foo", "=", "qsdf"]]);
+            onWillUpdateProps((nextProps) => {
+                expect.step("props updated");
+                expect(nextProps.domain).toEqual([]);
+            });
+        }
+    }
+
+    patchWithCleanup(serverState.view_info, {
+        toy: { multi_record: true, display_name: "Toy", icon: "fab fa-android" },
+    });
+    viewsRegistry.add("toy", {
+        type: "toy",
+        Controller: ToyController,
+    });
+    after(() => viewsRegistry.remove("toy"));
+    Foo._filters = [
+>>>>>>> 984c0bcd2d39a56612112314b319befb282781fe
         {
             context: "{}",
             domain: "[['foo', '=', 'qsdf']]",

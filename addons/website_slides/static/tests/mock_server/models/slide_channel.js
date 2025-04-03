@@ -1,10 +1,17 @@
+<<<<<<< cc879e5d0e710248679eabb5a5df3dc601523518
 import { getKwArgs, models } from "@web/../tests/web_test_helpers";
 import { DEFAULT_MAIL_VIEW_ID } from "@mail/../tests/mock_server/mock_models/constants";
+||||||| c1d88949a3c305b425ab3a862741ebab7b7cd344
+import { models } from "@web/../tests/web_test_helpers";
+import { DEFAULT_MAIL_VIEW_ID } from "@mail/../tests/mock_server/mock_models/constants";
+=======
+import { models } from "@web/../tests/web_test_helpers";
+>>>>>>> 984c0bcd2d39a56612112314b319befb282781fe
 
 export class SlideChannel extends models.ServerModel {
     _name = "slide.channel";
     _views = {
-        [`form,${DEFAULT_MAIL_VIEW_ID}`]: `
+        form: /* xml */ `
             <form>
                 <chatter/>
             </form>
