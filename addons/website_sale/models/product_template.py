@@ -303,7 +303,6 @@ class ProductTemplate(models.Model):
                 }
         return res
 
-
     def _get_sales_prices(self, website):
         if not self:
             return {}
