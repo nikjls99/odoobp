@@ -20,6 +20,7 @@ class EventQuestion(models.Model):
         ('phone', 'Phone'),
         ('company_name', 'Company'),
     ], default='simple_choice', string="Question Type", required=True)
+    active = fields.Boolean('Active', default=True)
     event_type_ids = fields.Many2many('event.type', string='Event Types', copy=False)
     event_ids = fields.Many2many('event.event', string='Events', copy=False)
     event_count = fields.Integer('# Events', compute='_compute_event_count')
