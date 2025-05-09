@@ -1,0 +1,211 @@
+# -*- coding: utf-8 -*-
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
+from odoo.addons.survey.tests import common
+from odoo.tests import tagged
+from odoo.tests.common import users, HttpCase
+from odoo.addons.mail.tests.common import MockEmail
+
+
+@tagged('-at_install', 'post_install', 'functional', 'dev_test')
+class TestLeadQualification(common.TestSurveyCommon, MockEmail, HttpCase):
+    """
+    These tests will check:
+    - 1st case: if connected user's inputs contains "Create lead" answers, then a lead is created successfully
+    - 2nd case: if connected user's inputs not contain "Create lead" answers, a lead isn't created anymore
+    - 3rd case: if not connected user's inputs contains "Create lead" answers, then a lead is created with his email answer
+    """
+    def _create_lead_qualification_survey(self, is_in_sales_team=False, survey_name=None):
+        login = "survey_manager"
+        # Adding in a sales team
+        if is_in_sales_team:
+            sales_team = self.env['crm.team'].create({
+                'name': 'Odoo Survey Team',
+                'use_leads': True
+            })
+            user = self.env['res.users'].search([('login', '=', login)])
+            sales_team.member_ids = [(4, user.id)]
+
+        with self.with_user(login):
+            # Create lead qualification survey
+            if survey_name is None:
+                survey_name = 'Questionnaire for the position of software developer'
+            survey = self.env['survey.survey'].create({
+                'title': survey_name,
+                'survey_type': 'lead_qualification',
+                'questions_layout': 'page_per_question',
+                'access_mode': 'public',
+                'users_login_required': False,
+            })
+
+            # Create questions
+            q01 = self._add_question(
+                None, 'How old are you?', 'simple_choice',
+                sequence=1,
+                constr_mandatory=True, constr_error_msg='Please select an answer', survey_id=survey.id,
+                labels=[
+                    {'value': '18-30', 'create_lead': False},
+                    {'value': '30-50', 'create_lead': False},
+                    {'value': '50+', 'create_lead': False},
+                ])
+
+            q02 = self._add_question(
+                None, 'What programming languages do you use on a daily basis?', 'multiple_choice',
+                sequence=2,
+                constr_mandatory=True, constr_error_msg='Please select an answer', survey_id=survey.id,
+                labels=[
+                    {'value': 'Assembly', 'create_lead': True},
+                    {'value': 'Java', 'create_lead': False},
+                    {'value': 'C', 'create_lead': False},
+                    {'value': 'Python', 'create_lead': False},
+                ])
+
+            q03 = self._add_question(
+                None, 'How many years of experience do you have in this position?', 'simple_choice',
+                sequence=3,
+                constr_mandatory=True, constr_error_msg='Please select an answer', survey_id=survey.id,
+                labels=[
+                    {'value': '0-1 year', 'create_lead': True},  # Newbie power
+                    {'value': '2-5 years', 'create_lead': False},
+                    {'value': '6+ years', 'create_lead': False},
+                ])
+
+            q04 = self._add_question(
+                None, 'Please skip this one', 'simple_choice',
+                sequence=4,
+                constr_mandatory=False, survey_id=survey.id,
+                labels=[
+                    {'value': 'No.', 'create_lead': False},
+                    {'value': 'NO', 'create_lead': False},
+                    {'value': 'OK, btw', 'create_lead': False},
+                ])
+
+            q05 = self._add_question(
+                None, 'Please add or verify your email address :', 'char_box',
+                sequence=5,
+                validation_email=True,
+                constr_mandatory=True, constr_error_msg='Please select an answer', survey_id=survey.id,
+                )
+
+            self.assertFalse(q01.is_lead_generating)
+            self.assertTrue(q02.is_lead_generating)
+            self.assertTrue(q03.is_lead_generating)
+            self.assertFalse(q04.is_lead_generating)
+            self.assertFalse(q05.is_lead_generating)
+
+            return survey
+
+    def test_connected_account_access_with_lead_generation_answer(self):
+        # Step 1 : Connected access + lead generation
+        survey = self._create_lead_qualification_survey()
+
+        # Account connection
+        login_password = 'survey_user'
+        user = self.env['res.users'].search([('login', '=', login_password)])
+
+        with self.with_user(login_password):
+            # Start page
+            self._access_start(survey)
+            user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.id)], limit=1)
+            user_inputs.partner_id = user.partner_id
+            answer_token = user_inputs.access_token
+
+            # First page
+            response = self._access_page(survey, answer_token)
+            csrf_token = self._find_csrf_token(response.text)
+            self._access_begin(survey, answer_token)
+
+            # Answers
+            question_ids = list(survey.question_ids)
+            self._answer_question(question_ids[0], question_ids[0].suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(question_ids[1], question_ids[1].suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(question_ids[2], question_ids[2].suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(question_ids[3], question_ids[3].suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(question_ids[4], user.email, answer_token, csrf_token)
+
+        ### Check if the last created lead was from the survey
+        last_lead_created = self.env['crm.lead'].search([], order='create_date desc', limit=1)
+        self.assertTrue(last_lead_created)
+        self.assertEqual(last_lead_created.name, f"Survey {survey.id} Lead - {survey.title}")
+
+        # Ensure that the result values are present in lead description
+        description = last_lead_created.description
+        for answer in user_inputs.user_input_line_ids:
+            self.assertIn(answer._get_answer_value(), description)
+
+        # Ensure contact, salesperson, medium, source and email are right
+        self.assertEqual(last_lead_created.partner_id, user.partner_id)
+        self.assertFalse(last_lead_created.user_id.id)
+        self.assertEqual(last_lead_created.medium_id.name, "Survey")
+        self.assertEqual(last_lead_created.source_id.name, survey.title)
+        self.assertEqual(last_lead_created.email_from, user.email)
+
+    def test_connected_account_access_without_lead_generation_answer(self):
+        # Step 2 : Connected access + no lead generation
+        survey = self._create_lead_qualification_survey(survey_name="Not important survey")
+
+        # Account connection
+        login_password = 'survey_user'
+        user = self.env['res.users'].search([('login', '=', login_password)])
+
+        # Start page
+        self._access_start(survey)
+        user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.id)], limit=1)
+        answer_token = user_inputs.access_token
+
+        # First page
+        response = self._access_page(survey, answer_token)
+        csrf_token = self._find_csrf_token(response.text)
+        self._access_begin(survey, answer_token)
+
+        # Answers
+        with self.with_user(login_password):
+            question_ids = list(survey.question_ids)
+            self._answer_question(question_ids[0], question_ids[0].suggested_answer_ids.ids[2], answer_token, csrf_token)
+            self._answer_question(question_ids[1], question_ids[1].suggested_answer_ids.ids[2], answer_token, csrf_token)
+            self._answer_question(question_ids[2], question_ids[2].suggested_answer_ids.ids[2], answer_token, csrf_token)
+            self._answer_question(question_ids[3], question_ids[3].suggested_answer_ids.ids[2], answer_token, csrf_token)
+            self._answer_question(question_ids[4], user.email, answer_token, csrf_token)
+
+        ### Check if the last created lead was from the survey
+        last_lead_created = self.env['crm.lead'].search([], order='create_date desc', limit=1)
+        self.assertNotEqual(last_lead_created.name, f"Survey {survey.id} Lead - {survey.title}")
+
+    def test_not_connected_account_access_with_lead_generation_answer(self):
+        # Step 3 : Public access + lead generation
+        survey = self._create_lead_qualification_survey(is_in_sales_team=True)
+
+        # Start page
+        self._access_start(survey)
+        user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.id)])
+        answer_token = user_inputs.access_token
+
+        # First page
+        response = self._access_page(survey, answer_token)
+        csrf_token = self._find_csrf_token(response.text)
+        self._access_begin(survey, answer_token)
+
+        # Answers
+        with self.with_user('survey_user'):
+            question_ids = list(survey.question_ids)
+            self._answer_question(question_ids[0], question_ids[0].suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(question_ids[1], question_ids[1].suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(question_ids[2], question_ids[2].suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(question_ids[3], question_ids[3].suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(question_ids[4], "harry@potter.poudlard", answer_token, csrf_token)
+
+        ### Check if the last created lead was from the survey
+        last_lead_created = self.env['crm.lead'].search([], order='create_date desc', limit=1)
+        self.assertEqual(last_lead_created.name, f"Survey {survey.id} Lead - {survey.title}")
+
+        # Ensure that the result values are present in lead description
+        description = last_lead_created.description
+        for answer in user_inputs.user_input_line_ids:
+            self.assertIn(answer._get_answer_value(), description)
+
+        # Ensure contact, salesperson, medium, source and email are right
+        self.assertFalse(last_lead_created.partner_id.id)  # Public user
+        self.assertEqual(last_lead_created.user_id.id, survey.user_id.id)  # Survey created by a sales team person
+        self.assertEqual(last_lead_created.medium_id.name, "Survey")
+        self.assertEqual(last_lead_created.source_id.name, survey.title)
+        self.assertEqual(last_lead_created.email_from, "harry@potter.poudlard")

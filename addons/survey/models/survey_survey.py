@@ -41,6 +41,7 @@ class SurveySurvey(models.Model):
         ('live_session', 'Live session'),
         ('assessment', 'Assessment'),
         ('custom', 'Custom'),
+        ('lead_qualification', 'Lead qualification'),
     ],
         string='Survey Type', required=True, default='custom')
     lang_ids = fields.Many2many(
@@ -169,6 +170,8 @@ class SurveySurvey(models.Model):
         "Time limit (seconds)", help="Default time given to receive additional points for right answers")
     # conditional questions management
     has_conditional_questions = fields.Boolean("Contains conditional questions", compute="_compute_has_conditional_questions")
+    # lead creation
+    created_leads = fields.Integer("Leads", compute='_compute_created_leads')
 
     _access_token_unique = models.Constraint(
         'unique(access_token)',
@@ -380,6 +383,13 @@ class SurveySurvey(models.Model):
         for survey in self:
             survey.session_available = survey.survey_type in {'live_session', 'custom'} and not survey.certification
 
+    @api.depends('created_leads', 'title')
+    def _compute_created_leads(self):
+        for survey in self:
+            domain = [("display_name", "ilike", "Survey " + str(self.id) + " Lead")]
+            leads = self.env['crm.lead'].search_count(domain)
+            survey.created_leads = leads
+
     @api.depends_context('uid')
     def _compute_allowed_survey_types(self):
         self.allowed_survey_types = [
@@ -387,11 +397,12 @@ class SurveySurvey(models.Model):
             'live_session',
             'assessment',
             'custom',
+            'lead_qualification',
         ] if self.env.user.has_group('survey.group_survey_user') else False
 
     @api.onchange('survey_type')
     def _onchange_survey_type(self):
-        if self.survey_type == 'survey':
+        if self.survey_type in ['survey', 'lead_qualification']:
             self.write({
                 'certification': False,
                 'is_time_limited': False,
@@ -1108,6 +1119,13 @@ class SurveySurvey(models.Model):
             'target': 'new',
             'url': '/survey/test/%s' % self.access_token,
         }
+
+    def action_survey_user_input_leads(self):
+        """This method will show the leads created from the current survey"""
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("crm.crm_lead_all_leads")
+        action['domain'] = [("display_name", "ilike", "Survey " + str(self.id) + " Lead")]
+        return action
 
     def action_survey_user_input_completed(self):
         action = self.env['ir.actions.act_window']._for_xml_id('survey.action_survey_user_input')

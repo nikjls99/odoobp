@@ -18,3 +18,4 @@ from . import test_survey_compute_pages_questions
 from . import test_certification_badge
 from . import test_survey_performance
 from . import test_survey_results
+from . import test_lead_qualification

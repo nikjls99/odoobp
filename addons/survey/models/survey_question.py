@@ -67,6 +67,7 @@ class SurveyQuestion(models.Model):
     background_image = fields.Image("Background Image", compute="_compute_background_image", store=True, readonly=False)
     background_image_url = fields.Char("Background Url", compute="_compute_background_image_url")
     survey_id = fields.Many2one('survey.survey', string='Survey', ondelete='cascade', index='btree_not_null')
+    survey_type = fields.Selection(related='survey_id.survey_type', string='Survey Type', readonly=True)
     scoring_type = fields.Selection(related='survey_id.scoring_type', string='Scoring Type', readonly=True)
     sequence = fields.Integer('Sequence', default=10)
     session_available = fields.Boolean(related='survey_id.session_available', string='Live Session available', readonly=True)
@@ -101,6 +102,8 @@ class SurveyQuestion(models.Model):
         help="Include this question as part of quiz scoring. Requires an answer and answer score to be taken into account.")
     has_image_only_suggested_answer = fields.Boolean(
         "Has image only suggested answer", compute='_compute_has_image_only_suggested_answer')
+    is_lead_generating = fields.Boolean('Lead generating', default=False, compute="_compute_is_lead_generating",
+                                         help="At least one of its answers can generate leads.")
     # -- scoreable/answerable simple answer_types: numerical_box / date / datetime
     answer_numerical_box = fields.Float('Correct numerical answer', help="Correct number answer for this question.")
     answer_date = fields.Date('Correct date answer', help="Correct date answer for this question.")
@@ -398,6 +401,19 @@ class SurveyQuestion(models.Model):
                 question.is_scored_question = any(question.suggested_answer_ids.mapped('is_correct'))
             else:
                 question.is_scored_question = False
+
+    @api.depends('question_ids')
+    def _compute_is_lead_generating(self):
+        """
+        Compute the boolean to know if (at least) an answer can trigger a lead.
+        """
+        for question in self:
+            question.is_lead_generating = False
+            if question.question_type in ["simple_choice", "multiple_choice", "matrix"]:
+                for answer in question.suggested_answer_ids:
+                    if answer.create_lead:
+                        question.is_lead_generating = True
+                        break
 
     @api.onchange('question_type', 'validation_required')
     def _onchange_validation_parameters(self):
@@ -845,6 +861,7 @@ class SurveyQuestionAnswer(models.Model):
     scoring_type = fields.Selection(related='question_id.scoring_type')
     # answer related fields
     value = fields.Char('Suggested value', translate=True)
+    create_lead = fields.Boolean('Lead creation', help='A lead will be created if the participant chooses this answer.')
     value_image = fields.Image('Image', max_width=1024, max_height=1024)
     value_image_filename = fields.Char('Image Filename')
     value_label = fields.Char('Value Label', compute='_compute_value_label',
