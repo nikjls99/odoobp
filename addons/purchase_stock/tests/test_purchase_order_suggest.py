@@ -45,7 +45,6 @@ class TestPurchaseOrderSuggest(PurchaseTestCommon):
                 'location_id': delivery_type.default_location_src_id.id,
                 'location_dest_id': delivery_type.default_location_dest_id.id,
                 'move_ids': [Command.create({
-                    'name': f'Delivery move test for {product.name}',
                     'location_id': delivery_type.default_location_src_id.id,
                     'location_dest_id': delivery_type.default_location_dest_id.id,
                     'product_id': product.id,
@@ -356,7 +355,6 @@ class TestPurchaseOrderSuggest(PurchaseTestCommon):
             'location_id': self.supplier_location.id,
             'location_dest_id': self.stock_location.id,
             'move_ids': [Command.create({
-                'name': f'Receipt move test for {self.product_1.name}',
                 'location_id': self.supplier_location.id,
                 'location_dest_id': self.stock_location.id,
                 'product_id': self.product_1.id,
