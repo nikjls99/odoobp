@@ -3,12 +3,14 @@ import { CheckBox } from "@web/core/checkbox/checkbox";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
+import { localization } from "@web/core/l10n/localization";
 import { Pager } from "@web/core/pager/pager";
 import { evaluateBooleanExpr } from "@web/core/py_js/py";
 import { registry } from "@web/core/registry";
 import { useAutofocus, useBus, useService } from "@web/core/utils/hooks";
 import { useSortable } from "@web/core/utils/sortable_owl";
 import { getTabableElements } from "@web/core/utils/ui";
+import { combineModifiers } from "@web/model/relational_model/utils";
 import { Field, getPropertyFieldInfo } from "@web/views/fields/field";
 import { getTooltipInfo } from "@web/views/fields/field_tooltip";
 import {
@@ -16,26 +18,26 @@ import {
     getClassNameFromDecoration,
     getFormattedValue,
 } from "@web/views/utils";
-import { combineModifiers } from "@web/model/relational_model/utils";
 import { ViewButton } from "@web/views/view_button/view_button";
 import { useBounceButton } from "@web/views/view_hook";
 import { Widget } from "@web/views/widgets/widget";
-import { localization } from "@web/core/l10n/localization";
 import { useMagicColumnWidths } from "./column_width_hook";
 
 import {
     Component,
     onMounted,
     onPatched,
-    status,
+    onWillDestroy,
     onWillPatch,
     onWillRender,
+    status,
     useExternalListener,
     useRef,
     useState,
 } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { exprToBoolean } from "@web/core/utils/strings";
+import { GroupConfigMenu } from "@web/views/view_components/group_config_menu";
 
 /**
  * @typedef {import('@web/model/relational_model/dynamic_list').DynamicList} DynamicList
@@ -96,7 +98,16 @@ export class ListRenderer extends Component {
     static groupRowTemplate = "web.ListRenderer.GroupRow";
     static useMagicColumnWidths = true;
     static LONG_TOUCH_THRESHOLD = 400;
-    static components = { DropdownItem, Field, ViewButton, CheckBox, Dropdown, Pager, Widget };
+    static components = {
+        DropdownItem,
+        Field,
+        ViewButton,
+        CheckBox,
+        Dropdown,
+        GroupConfigMenu,
+        Pager,
+        Widget,
+    };
     static defaultProps = { hasSelectors: false, cycleOnTab: true };
     static props = [
         "activeActions?",
@@ -268,6 +279,10 @@ export class ListRenderer extends Component {
             this.lastEditedCell = null;
         });
         this.isRTL = localization.direction === "rtl";
+        this.dialogClose = [];
+        onWillDestroy(() => {
+            this.dialogClose.forEach((close) => close());
+        });
     }
 
     displaySaveNotification() {
@@ -692,6 +707,17 @@ export class ListRenderer extends Component {
             }
         }
         return aggregates;
+    }
+
+    getGroupConfigMenuProps(group) {
+        return {
+            activeActions: this.props.activeActions,
+            configItems: registry.category("group_config_items").getEntries(),
+            deleteGroup: async () => await this.props.list.deleteGroups([group]),
+            dialogClose: this.dialogClose,
+            group,
+            list: this.props.list,
+        };
     }
 
     formatAggregateValue(group, column) {
@@ -1813,6 +1839,13 @@ export class ListRenderer extends Component {
      */
     showGroupPager(group) {
         return !group.isFolded && group.list.limit < group.list.count;
+    }
+
+    /**
+     * @param {Group} group
+     */
+    showGroupGroupConfigMenu(group) {
+        return group.value && ["many2one", "many2many"].includes(group.groupByField.type);
     }
 
     /**
