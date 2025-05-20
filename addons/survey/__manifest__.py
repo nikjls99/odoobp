@@ -21,8 +21,7 @@ sent mails with personal token for the invitation of the survey.
         'http_routing',
         'mail',
         'web_tour',
-        'gamification',
-        'crm'],
+        'gamification'],
     'data': [
         'report/survey_templates.xml',
         'report/survey_reports.xml',

@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo.addons.survey.tests import common
 from odoo.tests import tagged
-from odoo.tests.common import users, HttpCase
+from odoo.tests.common import HttpCase
 from odoo.addons.mail.tests.common import MockEmail
 
 
 @tagged('-at_install', 'post_install', 'functional', 'dev_test')
-class TestLeadQualification(common.TestSurveyCommon, MockEmail, HttpCase):
+class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
     """
     These tests will check:
     - 1st case: if connected user's inputs contains "Create lead" answers, then a lead is created successfully

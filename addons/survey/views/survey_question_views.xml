@@ -168,7 +168,6 @@
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
                                     <field name="value" string="Choices" required="not value_image"/>
-                                    <field name="create_lead" string="Create Leads" column_invisible="parent.survey_type != 'lead_qualification'"/>
                                     <field name="is_correct"
                                         column_invisible="parent.scoring_type == 'no_scoring' or parent.question_type == 'matrix'"/>
                                     <field name="answer_score"
