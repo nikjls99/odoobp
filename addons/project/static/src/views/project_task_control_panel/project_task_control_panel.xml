@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="project.ProjectTaskControlPanel" t-inherit="web.ControlPanel">
+        <xpath expr="//button[@name='embedded_actions']" position="before">
+            <button class="btn btn-secondary o_show_subtasks"
+                    t-att-class="{ active: state.showSubtasks }"
+                    t-on-click="onClickShowSubtasks"
+                    t-att-title="showSubtasksTitle"
+            >
+                <i class="fa fa-tasks"/>
+            </button>
+        </xpath>
+    </t>
+
+</templates>
