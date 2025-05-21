@@ -2,6 +2,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import _, api, fields, models
+from odoo.exceptions import RedirectWarning
 from odoo.addons.account.models.company import PEPPOL_LIST
 
 
@@ -95,7 +96,6 @@ class ResConfigSettings(models.TransientModel):
     module_currency_rate_live = fields.Boolean(string="Automatic Currency Rates")
     module_account_intrastat = fields.Boolean(string='Intrastat')
     module_product_margin = fields.Boolean(string="Allow Product Margin")
-    module_l10n_eu_oss = fields.Boolean(string="EU Intra-community Distance Selling")
     module_account_extract = fields.Boolean(string="Document Digitization")
     module_account_invoice_extract = fields.Boolean("Invoice Digitization", compute='_compute_module_account_invoice_extract', readonly=False, store=True)
     module_account_bank_statement_extract = fields.Boolean("Bank Statement Digitization", compute='_compute_module_account_bank_statement_extract', readonly=False, store=True)
@@ -301,4 +301,29 @@ class ResConfigSettings(models.TransientModel):
             'view_id': self.env.ref("account.res_company_view_form_terms", False).id,
             'target': 'new',
             'res_id': self.company_id.id,
+        }
+
+    def action_eu_oss_tax_mapping(self):
+        oss_module = self.env['ir.module.module'].search([('name', '=', 'l10n_eu_oss')], limit=1)
+
+        if not oss_module or oss_module.state == 'uninstalled':
+            msg = self.env._("To proceed, please install the EU OSS module. You will be redirected to the apps page. After installation, please click on the 'OSS Tax Mapping' button to map EU taxes.")
+            action = {
+                'name': self.env._('Apps: EU One Stop Shop (OSS)'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'ir.module.module',
+                'res_id': oss_module.id,
+                'views': [(False, 'kanban'), (False, 'list'), (False, 'form')],
+                'domain': [('name', '=', 'l10n_eu_oss')],
+                'target': 'current',
+            }
+            raise RedirectWarning(msg, action, self.env._("Go to Apps"))
+        self.env.company._map_eu_taxes()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': 'success',
+                'message': self.env._("OSS Tax mapping done succesfully."),
+            }
         }
