@@ -84,7 +84,8 @@ class SurveyUser_Input(models.Model):
 
                 if user_input.partner_id.id:  # Check if the person is connected
                     dico['partner_id'] = user_input.partner_id.id
-                else:
+                    self.env['crm.lead'].create(dico)
+                else:  # Creation with Odoobot and email field answer otherwise
                     dico['email_from'] = public_user_mail
-
-                self.env['crm.lead'].create(dico)
+                    odoobot = self.env.ref('base.user_root')
+                    self.env['crm.lead'].with_user(odoobot).create(dico)

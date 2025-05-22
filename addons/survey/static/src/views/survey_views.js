@@ -4,6 +4,7 @@ import { KanbanRenderer } from "@web/views/kanban/kanban_renderer";
 import { listView } from '@web/views/list/list_view';
 import { kanbanView } from '@web/views/kanban/kanban_view';
 import { useService } from "@web/core/utils/hooks";
+import { SurveyTypeActionHelper } from "@survey/views/components/survey_type_action_helper/survey_type_action_helper";
 import { useEffect, useRef } from "@odoo/owl";
 
 export function useSurveyLoadSampleHook(selector) {
@@ -50,6 +51,12 @@ export function useSurveyLoadSampleHook(selector) {
 };
 
 export class SurveyListRenderer extends ListRenderer {
+    static template = "survey.SurveyTypeListRenderer";
+    static components = {
+        ...ListRenderer.components,
+        SurveyTypeActionHelper,
+    }
+
     setup() {
         super.setup();
 
@@ -65,6 +72,12 @@ registry.category('views').add('survey_view_tree', {
 });
 
 export class SurveyKanbanRenderer extends KanbanRenderer {
+    static template = "survey.SurveyTypeKanbanRenderer";
+    static components = {
+        ...KanbanRenderer.components,
+        SurveyTypeActionHelper,
+    }
+
     setup() {
         super.setup();
         this.canCreate = this.props.archInfo.activeActions.create;

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <t t-name="survey.SurveyTypeActionHelper">
+        <div class="o_kanban_renderer o_renderer d-flex user-select-none o_kanban_ungrouped align-content-start flex-wrap justify-content-start">
+            <div class="o_view_nocontent">
+                <div class="o_nocontent_help">
+                    <p>
+                        No Survey Found
+                    </p><p>
+                        Pick a sample or <a action="action_load_sample_custom" class="o_survey_load_sample">Start from scratch</a>.
+                    </p>
+
+                    <div class="row mb-4 w-100 px-5 justify-content-center">
+                        <t t-set="templateNames" t-value="Object.keys(surveyTypeTemplateData)"/>
+                        <t t-foreach="templateNames" t-as="templateName" t-key="templateName">
+                            <t t-set="templateInfo" t-value="surveyTypeTemplateData[templateName]"/>
+                            <div class="col-md-3 p-2 flex-row o_survey_load_sample survey_sample_card card rounded m-3 flex-wrap cursor-pointer"
+                                t-on-click.stop.prevent="() => this.onTemplateClick(templateInfo)">
+                                <div class="col-lg-4 p-3">
+                                    <img class="img-fluid" t-attf-src="{{templateInfo.icon}}" t-attf-alt="{{templateInfo.title}}"/>
+                                </div>
+                                <div class="col-lg-8 p-3 text-start">
+                                    <h3 t-out="templateInfo.title"/>
+                                    <p t-out="templateInfo.description"/>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</odoo>

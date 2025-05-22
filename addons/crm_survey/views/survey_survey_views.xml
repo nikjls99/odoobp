@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+<data>
+
+    <record id="survey_survey_view_form_inherit" model="ir.ui.view">
+        <field name="name">survey.survey.view.form.inherit</field>
+        <field name="model">survey.survey</field>
+        <field name="inherit_id" ref="survey.survey_survey_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_survey_user_input_completed']" position="after">
+                <button name="action_survey_user_input_leads"
+                    type="object"
+                    class="oe_stat_button"
+                    invisible="not (survey_type == 'lead_qualification' and created_leads != 0)"
+                    icon="fa-star">
+                    <field string="Leads" name="created_leads" widget="statinfo"/>
+                </button>
+            </xpath>
+
+            <xpath expr="//field[@widget='survey_description_page']" position="after">
+                <button type="object" icon="fa-star" 
+                    title="This question generates leads" invisible="not (survey_type == 'lead_qualification' and is_lead_generating)"/>
+            </xpath>
+
+            <xpath expr="//group[@name='scoring']" position="after">
+                <attribute name="invisible">survey_type in ['survey', 'lead_qualification']</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</data>
+</odoo>

@@ -15,10 +15,8 @@
                 'survey',
     ],
     'data': [
-        # 'security/ir.model.access.csv',  # TODO rros Security, to see
         'views/survey_question_views.xml',
         'views/survey_survey_views.xml',
-        'views/survey_user_views.xml',
     ],
     'auto_install': True,
     'author': 'Odoo S.A.',

@@ -6,7 +6,7 @@ from odoo.tests.common import HttpCase
 from odoo.addons.mail.tests.common import MockEmail
 
 
-@tagged('-at_install', 'post_install', 'functional', 'dev_test')
+@tagged('-at_install', 'post_install', 'functional')
 class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
     """
     These tests will check:

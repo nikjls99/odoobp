@@ -42,7 +42,7 @@ class SurveySurvey(models.Model):
         ('assessment', 'Assessment'),
         ('custom', 'Custom'),
     ],
-        string='Survey Type', required=True, default='custom', ondelete='set default')
+        string='Survey Type', required=True, default='custom')
     lang_ids = fields.Many2many(
         'res.lang', string='Languages',
         default=lambda self: self.env['res.lang']._lang_get(
