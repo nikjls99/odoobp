@@ -15,8 +15,13 @@
                 'survey',
     ],
     'data': [
+        # 'security/crm_survey_security.xml',
         'views/survey_question_views.xml',
         'views/survey_survey_views.xml',
+    ],
+    'demo': [
+        'demo/lead_qualification_survey_demo.xml',
+        'demo/lead_qualification_answer_demo.xml',
     ],
     'auto_install': True,
     'author': 'Odoo S.A.',

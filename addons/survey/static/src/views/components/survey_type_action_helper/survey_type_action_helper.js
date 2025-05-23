@@ -18,6 +18,15 @@ export class SurveyTypeActionHelper extends Component {
         });
     }
 
+    async onStartFromScratchClick() {
+        const action = await this.orm.call(
+            'survey.survey',
+            'action_load_sample_custom',
+            [],
+        );
+        this.action.doAction(action);
+    }
+
     async onTemplateClick(templateInfo) {
         const action = await this.orm.call(
             'survey.survey',

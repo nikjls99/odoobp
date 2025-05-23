@@ -208,3 +208,46 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
         self.assertEqual(last_lead_created.medium_id.name, "Survey")
         self.assertEqual(last_lead_created.source_id.name, survey.title)
         self.assertEqual(last_lead_created.email_from, "harry@potter.poudlard")
+
+        # Ensure Odoobot created the lead
+        for message in last_lead_created.message_ids:
+            self.assertEqual(message.author_id.name, self.env.ref('base.user_root').name)
+
+    # Override common test survey class for adding "create_lead" attribute
+    def _add_question(self, page, name, qtype, **kwargs):
+        constr_mandatory = kwargs.pop('constr_mandatory', True)
+        constr_error_msg = kwargs.pop('constr_error_msg', 'TestError')
+
+        sequence = kwargs.pop('sequence', False)
+        if not sequence:
+            sequence = page.question_ids[-1].sequence + 1 if page.question_ids else page.sequence + 1
+
+        base_qvalues = {
+            'sequence': sequence,
+            'title': name,
+            'question_type': qtype,
+            'constr_mandatory': constr_mandatory,
+            'constr_error_msg': constr_error_msg,
+        }
+        if qtype in ('simple_choice', 'multiple_choice'):
+            base_qvalues['suggested_answer_ids'] = [
+                (0, 0, {
+                    'value': label['value'],
+                    'answer_score': label.get('answer_score', 0),
+                    'is_correct': label.get('is_correct', False),
+                    'create_lead': label.get('create_lead', False)
+                }) for label in kwargs.pop('labels')
+            ]
+        elif qtype == 'matrix':
+            base_qvalues['matrix_subtype'] = kwargs.pop('matrix_subtype', 'simple')
+            base_qvalues['suggested_answer_ids'] = [
+                (0, 0, {'value': label['value'], 'answer_score': label.get('answer_score', 0), 'create_lead': label.get('create_lead', False)})
+                for label in kwargs.pop('labels')
+            ]
+            base_qvalues['matrix_row_ids'] = [
+                (0, 0, {'value': label['value'], 'answer_score': label.get('answer_score', 0), 'create_lead': label.get('create_lead', False)})
+                for label in kwargs.pop('labels_2')
+            ]
+        base_qvalues.update(kwargs)
+        question = self.env['survey.question'].create(base_qvalues)
+        return question
