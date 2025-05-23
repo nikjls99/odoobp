@@ -33,7 +33,7 @@ class StockMove(models.Model):
     def _compute_description_picking(self):
         super()._compute_description_picking()
         for move in self:
-            if move.sale_line_id:
+            if move.sale_line_id and not move.description_picking_manual:
                 move.description_picking += move.sale_line_id._get_sale_order_line_multiline_description_variants()
 
     def _get_related_invoices(self):
