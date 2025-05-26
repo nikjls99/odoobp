@@ -31,7 +31,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
                 survey_name = 'Questionnaire for the position of software developer'
             survey = self.env['survey.survey'].create({
                 'title': survey_name,
-                'survey_type': 'lead_qualification',
+                'survey_type': 'survey',
                 'questions_layout': 'page_per_question',
                 'access_mode': 'public',
                 'users_login_required': False,

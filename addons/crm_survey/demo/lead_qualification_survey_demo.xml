@@ -3,7 +3,7 @@
     <data noupdate="1">
     <!-- Could you be our best partner? -->
     <record model="survey.survey" id="lead_qualification_survey_template">
-        <field name="survey_type">lead_qualification</field>
+        <field name="survey_type">survey</field>
         <field name="title">Could you be our best partner?</field>
         <field name="user_id" ref="base.user_admin"/>
         <field name="access_mode">public</field>

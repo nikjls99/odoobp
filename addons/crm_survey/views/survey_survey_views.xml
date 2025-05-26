@@ -9,9 +9,10 @@
         <field name="arch" type="xml">
             <xpath expr="//button[@name='action_survey_user_input_completed']" position="after">
                 <button name="action_survey_user_input_leads"
+                    groups="sales_team.group_sale_salesman"
                     type="object"
                     class="oe_stat_button"
-                    invisible="not (survey_type == 'lead_qualification' and created_leads != 0)"
+                    invisible="not (survey_type == 'survey' and created_leads != 0)"
                     icon="fa-star">
                     <field string="Leads" name="created_leads" widget="statinfo"/>
                 </button>
@@ -19,11 +20,7 @@
 
             <xpath expr="//field[@widget='survey_description_page']" position="after">
                 <button type="object" icon="fa-star" 
-                    title="This question generates leads" invisible="not (survey_type == 'lead_qualification' and is_lead_generating)"/>
-            </xpath>
-
-            <xpath expr="//group[@name='scoring']" position="after">
-                <attribute name="invisible">survey_type in ['survey', 'lead_qualification']</attribute>
+                    title="This question generates leads" invisible="not (survey_type == 'survey' and is_lead_generating)"/>
             </xpath>
         </field>
     </record>

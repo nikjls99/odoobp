@@ -7,7 +7,7 @@ class SurveySurveyTemplate(models.Model):
     @api.model
     def action_load_sample_lead_qualification(self):
         return self.env['survey.survey'].create({
-            'survey_type': 'lead_qualification',
+            'survey_type': 'survey',
             'title': _('Getting to know you'),
             'description_done': _('Thanks for answering!'),
             'progression_mode': 'number',
