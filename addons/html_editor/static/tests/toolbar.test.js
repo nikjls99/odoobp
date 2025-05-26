@@ -335,7 +335,7 @@ test("toolbar works: can select font size", async () => {
 
     await contains(".o-we-toolbar [name='font_size_selector'].dropdown-toggle").click();
     const sizes = new Set(
-        fontSizeItems.map((item) => getFontSizeFromVar(item.variableName).toString())
+        fontSizeItems.map((item) => getFontSizeFromVar(item.variableName).toString() + item.tag)
     );
     expect(queryAllTexts(".o_font_size_selector_menu .dropdown-item")).toEqual([...sizes]);
     const h1Size = getFontSizeFromVar("h1-font-size").toString();
