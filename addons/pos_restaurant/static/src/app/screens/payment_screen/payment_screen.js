@@ -25,7 +25,8 @@ patch(PaymentScreen.prototype, {
         return await super.afterOrderValidation(...arguments);
     },
     async validateOrder(isForceValidate) {
-        if (this.pos.config.module_pos_restaurant && this.pos.getOrder().hasChange) {
+        if (this.pos.config.module_pos_restaurant && this.pos.getOrder().hasChange &&
+            !this.pos.getOrder().is_refund) {
             const confirmed = await ask(this.dialog, {
                 title: _t("Warning !"),
                 body: _t(
