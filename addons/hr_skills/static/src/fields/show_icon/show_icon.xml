@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<templates xml:space="preserve">
-
-    <t t-name="hr_skills.ShowIconField">
-        <i t-attf-class="fa {{props.icon}} {{props.color}}" t-att-title="props.title" t-if="props.record.data[props.name]"/>
-    </t>
-
-</templates>

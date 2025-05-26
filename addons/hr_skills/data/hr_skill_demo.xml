@@ -12,14 +12,19 @@
     <record id="hr_skill_type_marketing" model="hr.skill.type">
         <field name="name">Marketing</field>
     </record>
-    <record id="hr_skill_type_scrum_master" model="hr.skill.type">
-        <field name="name">Scrum Master</field>
-    </record>
-    <record id="hr_skill_type_odoo" model="hr.skill.type">
-        <field name="name">Odoo</field>
+    <record id="hr_skill_type_certifications" model="hr.skill.type">
+        <field name="name">Certifications</field>
+        <field name="is_certification">True</field>
     </record>
 
     <!--Skill Levels-->
+    <!-- Certifications -->
+    <record id="hr_skill_level_certifications" model="hr.skill.level">
+        <field name="name">Certified</field>
+        <field name="default_level">1</field>
+        <field name="level_progress">100</field>
+        <field name="skill_type_id" ref="hr_skill_type_certifications"/>
+    </record>
     <!--Programming-->
     <record id="hr_skill_level_beginner" model="hr.skill.level">
         <field name="name">Beginner</field>
@@ -308,6 +313,15 @@
     <record id="hr_skill_it_governance_compliance" model="hr.skill">
         <field name="name">IT governance and compliance (GDPR,HIPAA,...)</field>
         <field name="skill_type_id" ref="hr_skill_type_it"/>
+    </record>
+    <!-- Certification -->
+    <record id="hr_skill_type_certifications_odoo" model="hr.skill">
+        <field name="name">Odoo</field>
+        <field name="skill_type_id" ref="hr_skill_type_certifications"/>
+    </record>
+    <record id="hr_skill_type_certifications_scrum_master" model="hr.skill">
+        <field name="name">Scrum Master</field>
+        <field name="skill_type_id" ref="hr_skill_type_certifications"/>
     </record>
 </data>
 </odoo>

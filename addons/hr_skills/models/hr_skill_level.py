@@ -25,14 +25,6 @@ class HrSkillLevel(models.Model):
         'Progress should be a number between 0 and 100.',
     )
 
-    @api.depends('level_progress')
-    @api.depends_context('from_skill_level_dropdown')
-    def _compute_display_name(self):
-        if not self._context.get('from_skill_level_dropdown'):
-            return super()._compute_display_name()
-        for record in self:
-            record.display_name = f"{record.name} ({record.level_progress}%)"
-
     # This compute is never trigger by a depends in purpose. The front-end will change this value when the
     # default_level will become true.
     def _compute_technical_is_new_default(self):

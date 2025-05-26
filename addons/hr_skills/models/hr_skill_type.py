@@ -9,7 +9,7 @@ from odoo.exceptions import ValidationError
 class HrSkillType(models.Model):
     _name = 'hr.skill.type'
     _description = "Skill Type"
-    _order = "name"
+    _order = "sequence, name"
 
     def _get_default_color(self):
         return randint(1, 11)
@@ -37,7 +37,7 @@ class HrSkillType(models.Model):
     def _compute_display_name(self):
         for skill_type in self:
             if skill_type.is_certification:
-                skill_type.display_name = skill_type.name + u"\U0001F396"  # Military Medal's unicode
+                skill_type.display_name = skill_type.name + "\U0001F396"  # Military Medal's unicode
             else:
                 skill_type.display_name = skill_type.name
 
@@ -59,15 +59,6 @@ class HrSkillType(models.Model):
                 # This value need to be set to False, to reset it for the frontend.
                 level.technical_is_new_default = False
                 break
-
-    def _record_to_recompute(self):
-        self.env['hr.employee.skill'].search([('skill_type_id', 'in', self.ids)])._trigger_conflict()
-
-    def write(self, vals):
-        res = super().write(vals)
-        if 'is_certification' in vals and not vals['is_certification']:
-            self._record_to_recompute()
-        return res
 
     def copy_data(self, default=None):
         vals_list = super().copy_data(default=default)
