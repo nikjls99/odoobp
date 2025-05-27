@@ -160,6 +160,10 @@ class CrmLead(models.Model):
         'Last Stage Update', compute='_compute_date_last_stage_update', index=True, readonly=True, store=True)
     date_conversion = fields.Datetime('Conversion Date', readonly=True)
     date_deadline = fields.Date('Expected Closing', help="Estimate of the date on which the opportunity will be won.")
+    date_rot = fields.Date('Last activity', compute="_compute_date_rot", store=True)
+    is_rotting = fields.Boolean('Rotting', compute='_compute_rotting')
+    day_rotting = fields.Integer('Days Rotting', help='Day count since this lead was last updated',
+        compute='_compute_rotting')
     # Customer / contact
 
     # UX field to ease partner creation
@@ -387,6 +391,34 @@ class CrmLead(models.Model):
             date_create = fields.Datetime.from_string(lead.create_date)
             date_close = fields.Datetime.from_string(lead.date_closed)
             lead.day_close = abs((date_close - date_create).days)
+
+    @api.depends('message_ids', 'write_date', 'stage_id.day_rot')
+    def _compute_date_rot(self):
+        for lead in self:
+            # should only fetch the first message with types Email Outgoing or Comment (or Notification, for completed activities)
+            last_message = next(
+                (
+                    message for message in lead.message_ids if message.message_type in ['email_outgoing', 'comment', 'notification']
+                ), False
+            )
+            if last_message:
+                last_activity = max(last_message.date, lead.write_date).date()
+            else:
+                last_activity = lead.write_date or fields.Date.today()
+            lead.date_rot = last_activity + timedelta(days=lead.stage_id.day_rot)
+
+    @api.depends('won_status', 'type', 'date_rot', 'write_date', 'message_ids', 'stage_id.day_rot')
+    def _compute_rotting(self):
+        for lead in self:
+            if (lead.won_status != 'pending'
+                or lead.type != 'opportunity'
+                or fields.Date.today() < lead.date_rot
+                or lead.stage_id.day_rot == 0):
+                lead.is_rotting = False
+                lead.day_rotting = 0
+            else:
+                lead.is_rotting = True
+                lead.day_rotting = (fields.Date.today() - lead.date_rot).days + lead.stage_id.day_rot
 
     @api.depends('partner_id')
     def _compute_name(self):
@@ -1208,7 +1240,7 @@ class CrmLead(models.Model):
                 return _('Phew, that took some effort — but you nailed it. Good job!')
             elif query_result['count_user_closed_yesterday'] and query_result['count_user_closed_minus2day'] and not query_result['count_user_closed_minus3day']:
                 return _('You\'re on a winning streak. 3 deals in 3 days, congrats!')
-            elif False and query_result['min_day_close_30'] == self.day_close:
+            elif query_result['min_day_close_30'] == self.day_close:
                 return _('Wow, that was fast. That deal didn’t stand a chance!')
             # use duration tracking field to determine if the task jumped from first to last stage
             elif len([duration for duration in self.duration_tracking.values() if duration > 0]) == 1:
