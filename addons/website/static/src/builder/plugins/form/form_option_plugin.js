@@ -32,6 +32,7 @@ import {
     setActiveProperties,
     setVisibilityDependency,
     getParsedDataFor,
+    defaultMessage,
 } from "./utils";
 import { SyncCache } from "@html_builder/utils/sync_cache";
 import { _t } from "@web/core/l10n/translation";
@@ -345,6 +346,11 @@ export class FormOptionPlugin extends Plugin {
             customField: {
                 load: this.prepareFields.bind(this),
                 apply: ({ editingElement: fieldEl, value, loadResult: fields }) => {
+                    delete fieldEl.dataset.customError;
+                    delete fieldEl.dataset.errorMessage;
+                    delete fieldEl.dataset.requirementBetween;
+                    delete fieldEl.dataset.requirementCondition;
+                    delete fieldEl.dataset.requirementComparator;
                     const oldLabelText = fieldEl.querySelector(
                         ".s_website_form_label_content"
                     ).textContent;
@@ -509,6 +515,41 @@ export class FormOptionPlugin extends Plugin {
                 },
                 isApplied: ({ editingElement: fieldEl, params: { mainParam: activeValue } }) =>
                     fieldEl.classList.contains(activeValue),
+            },
+            setRequirementComparator: {
+                apply: ({ editingElement: fieldEl, params: { mainParam: activeValue } }) => {
+                    delete fieldEl.dataset.customError;
+                    delete fieldEl.dataset.errorMessage;
+                    delete fieldEl.dataset.requirementBetween;
+                    delete fieldEl.dataset.requirementCondition;
+                },
+            },
+            setRequirementErrorMessage: {
+                apply: ({ editingElement: fieldEl, params: { mainParam: activeValue } }) => {
+                    if (!fieldEl.dataset.customError) {
+                        fieldEl.dataset.customError = true;
+                    } else {
+                        delete fieldEl.dataset.customError;
+                    }
+                },
+                isApplied: ({ editingElement: fieldEl, params: { mainParam: activeValue } }) => 
+                    fieldEl.dataset.customError,
+            },
+            setDefaultErrorMessage: {
+                apply: ({ editingElement: fieldEl, params: { mainParam: activeValue } }) => {
+                    const {
+                        requirementComparator: comparator,
+                        requirementCondition: condition,
+                        requirementBetween: between,
+                        type,
+                    } = fieldEl.dataset;
+                    fieldEl.dataset.errorMessage = defaultMessage(
+                        comparator,
+                        condition,
+                        between,
+                        type,
+                    );
+                },
             },
             setVisibility: {
                 load: this.prepareConditionInputs.bind(this),
