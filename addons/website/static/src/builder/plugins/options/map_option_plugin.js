@@ -42,7 +42,7 @@ class MapOptionPlugin extends Plugin {
                 apply: ({ editingElement }) => {
                     editingElement.appendChild(
                         document.createRange().createContextualFragment(
-                            `<div class="description">
+                            `<div class="description" contenteditable="false">
                                 <strong>${_t("Visit us:")}</strong>
                                 ${_t("Our office is open Monday – Friday 8:30 a.m. – 4:00 p.m.")}
                             </div>`
@@ -51,6 +51,12 @@ class MapOptionPlugin extends Plugin {
                 },
                 clean: ({ editingElement }) => {
                     editingElement.querySelector(".description").remove();
+                },
+            },
+            mapDescriptionTextValue: {
+                getValue: ({ editingElement }) => editingElement.querySelector(".description")?.textContent.trim().replace(/\s+/g, ' ') || "",
+                apply: ({ editingElement, value }) => {
+                    editingElement.querySelector(".description").textContent = value;
                 },
             },
         };
