@@ -3,7 +3,7 @@ from freezegun import freeze_time
 
 from odoo import Command
 from odoo.exceptions import UserError
-from odoo.tests import tagged
+from odoo.tests import tagged, Form
 
 from odoo.addons.account.tests.common import TestTaxCommon
 from odoo.addons.analytic.tests.common import AnalyticCommon
@@ -1015,3 +1015,62 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
             })
         with self.assertRaisesRegex(UserError, 'The withholding net amount cannot be negative.'):
             payment_register._create_payments()
+
+    def test_placeholder_computation(self):
+        """ Note: this currently fails, but should not. """
+        withholding_tax = self.percent_tax(
+            -1,
+            is_withholding_tax_on_payment=True,
+            withholding_sequence_id=self.withholding_sequence.id,
+        )
+        withholding_tax_2 = self.percent_tax(
+            -2,
+            is_withholding_tax_on_payment=True,
+            withholding_sequence_id=self.withholding_sequence.id,
+        )
+        self.product_a.taxes_id = withholding_tax
+        self.product_b.taxes_id = withholding_tax_2
+
+        invoice = self.env["account.move"].create(
+            {
+                "move_type": "out_invoice",
+                "partner_id": self.partner_a.id,
+                "invoice_payment_term_id": self.env.ref("account.account_payment_term_advance_60days").id,
+                "invoice_line_ids": [
+                    Command.create({
+                        "product_id": self.product_a.id,
+                        "price_unit": 1000.0,
+                    }),
+                    Command.create({
+                        "product_id": self.product_b.id,
+                        "price_unit": 500.0,
+                    }),
+                ],
+            }
+        )
+        invoice.action_post()
+
+        AccountPaymentRegister = self.env["account.payment.register"].with_context(
+            active_model="account.move", active_ids=invoice.ids
+        )
+        with Form(AccountPaymentRegister) as payment_register_form:
+            # By default, the placeholders will have the correct values due to the sequence.
+            lines = payment_register_form.withholding_line_ids._records
+            self.assertEqual(lines[0]['placeholder_value'], '0001')
+            self.assertEqual(lines[1]['placeholder_value'], '0002')
+
+            with payment_register_form.withholding_line_ids.edit(0) as line_form:
+                line_form.name = "0008"  # Manual override
+
+            # We expect the placeholder to hold the correct value for line 0, and to restart counting at line 1
+            lines = payment_register_form.withholding_line_ids._records
+            self.assertEqual(lines[0]['placeholder_value'], '0008')
+            self.assertEqual(lines[1]['placeholder_value'], '0001')
+
+            with payment_register_form.withholding_line_ids.edit(0) as line_form:
+                line_form.name = ""  # reset
+
+            # We expect the placeholder to recompute as they were at the start
+            lines = payment_register_form.withholding_line_ids._records
+            self.assertEqual(lines[0]['placeholder_value'], '0001')
+            self.assertEqual(lines[1]['placeholder_value'], '0002')
