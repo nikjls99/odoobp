@@ -19,11 +19,3 @@ class SurveySurvey(models.Model):
         action = self.env["ir.actions.actions"]._for_xml_id("crm.crm_lead_all_leads")
         action['domain'] = [("survey_id", "=", self.id)]
         return action
-
-    def action_survey_user_input(self):
-        action = super().action_survey_user_input()
-        if self.survey_type in ['survey', 'custom']:
-            action.update({
-                'domain': [('survey_id.survey_type', 'in', '["survey", "custom"]')]
-            })
-        return action
