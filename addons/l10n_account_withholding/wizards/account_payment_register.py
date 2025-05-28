@@ -107,23 +107,28 @@ class AccountPaymentRegister(models.TransientModel):
                 will_create_multiple_entry = not wizard.can_edit_wizard or (wizard.can_group_payments and not wizard.group_payment)
                 wizard.display_withholding = bool(wizard_withholding_taxes) and not will_create_multiple_entry
 
+    @api.onchange('withholding_line_ids')
+    def _onchange_withholding_line_ids(self):
+        self.ensure_one()
+        if (
+            not self.display_withholding
+            or not self.can_edit_wizard
+            or not self.withholding_line_ids._need_update_withholding_lines_placeholder()
+        ):
+            return
+
+        self.withholding_line_ids = self.withholding_line_ids._prepare_update_withholding_lines_placeholder_commands()
+
     @api.depends(
         'can_edit_wizard',
         'display_withholding',
         'currency_id',
-        'withholding_line_ids.placeholder_type',
-        'withholding_line_ids.previous_placeholder_type',
     )
     def _compute_withholding_line_ids(self):
         for wizard in self:
             # Disable the withholding lines.
             if not wizard.display_withholding or not wizard.can_edit_wizard:
                 wizard.withholding_line_ids = [Command.clear()]
-                continue
-
-            # Recompute the placeholders only.
-            if wizard.withholding_line_ids._need_update_withholding_lines_placeholder():
-                wizard.withholding_line_ids = wizard.withholding_line_ids._prepare_update_withholding_lines_placeholder_commands()
                 continue
 
             # Recompute the lines themselves.

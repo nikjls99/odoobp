@@ -193,8 +193,6 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
             is_withholding_tax_on_payment=True,
             withholding_sequence_id=self.withholding_sequence.id,
         )
-        sequence_number1 = self.withholding_sequence.get_next_char(self.withholding_sequence.number_next_actual)
-        sequence_number2 = self.withholding_sequence.get_next_char(self.withholding_sequence.number_next_actual + 1)
 
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
@@ -227,7 +225,6 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
             'base_amount': 2000.0,
             'amount': 20.0,
             'withholding_sequence_id': self.withholding_sequence.id,
-            'placeholder_value': sequence_number1,
         }])
 
         payment_register.amount = 1150
@@ -237,7 +234,6 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
             'base_amount': 1000.0,
             'amount': 10.0,
             'withholding_sequence_id': self.withholding_sequence.id,
-            'placeholder_value': sequence_number1,
         }])
 
         payment_register.withholding_line_ids = [
@@ -245,7 +241,6 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
                 'tax_id': withholding_tax2.id,
                 'base_amount': 500.0,
                 'withholding_sequence_id': self.withholding_sequence.id,
-                'placeholder_value': sequence_number2,
             }),
         ]
         self.assertRecordValues(payment_register.withholding_line_ids, [
@@ -255,7 +250,6 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
                 'base_amount': 1000.0,
                 'amount': 10.0,
                 'withholding_sequence_id': self.withholding_sequence.id,
-                'placeholder_value': sequence_number1,
             },
             {
                 'original_base_amount': 500.0,
@@ -263,7 +257,6 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
                 'base_amount': 500.0,
                 'amount': 10.0,
                 'withholding_sequence_id': self.withholding_sequence.id,
-                'placeholder_value': sequence_number2,
             },
         ])
 
@@ -275,7 +268,6 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
                 'base_amount': 1000.0,
                 'amount': 10.0,
                 'withholding_sequence_id': self.withholding_sequence.id,
-                'placeholder_value': None,
             },
             {
                 'original_base_amount': 500.0,
@@ -283,7 +275,6 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
                 'base_amount': 500.0,
                 'amount': 10.0,
                 'withholding_sequence_id': self.withholding_sequence.id,
-                'placeholder_value': sequence_number1,
             },
         ])
 
@@ -1017,7 +1008,7 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
             payment_register._create_payments()
 
     def test_placeholder_computation(self):
-        """ Note: this currently fails, but should not. """
+        """ Ensure that the placeholder computation is working as expected when changed in the form view.. """
         withholding_tax = self.percent_tax(
             -1,
             is_withholding_tax_on_payment=True,
@@ -1064,7 +1055,7 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
 
             # We expect the placeholder to hold the correct value for line 0, and to restart counting at line 1
             lines = payment_register_form.withholding_line_ids._records
-            self.assertEqual(lines[0]['placeholder_value'], '0008')
+            self.assertEqual(lines[0]['placeholder_value'], False)
             self.assertEqual(lines[1]['placeholder_value'], '0001')
 
             with payment_register_form.withholding_line_ids.edit(0) as line_form:

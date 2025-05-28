@@ -69,22 +69,24 @@ class AccountPayment(models.Model):
     # Onchange, Constraint methods
     # ----------------------------
 
-    @api.depends(
-        'should_withhold_tax',
-        'currency_id',
-        'withholding_line_ids.placeholder_type',
-        'withholding_line_ids.previous_placeholder_type',
-    )
+    @api.onchange('withholding_line_ids')
+    def _onchange_withholding_line_ids(self):
+        self.ensure_one()
+        if (
+            not self.display_withholding
+            or not self.withholding_line_ids._need_update_withholding_lines_placeholder()
+        ):
+            return
+
+        self.withholding_line_ids = self.withholding_line_ids._prepare_update_withholding_lines_placeholder_commands()
+
+    @api.depends('should_withhold_tax')
     def _compute_withholding_line_ids(self):
         for payment in self:
             # Disable the withholding lines.
             if not payment.should_withhold_tax:
                 payment.withholding_line_ids = [Command.clear()]
                 continue
-
-            # Recompute the placeholders only.
-            if payment.withholding_line_ids._need_update_withholding_lines_placeholder():
-                payment.withholding_line_ids = payment.withholding_line_ids._prepare_update_withholding_lines_placeholder_commands()
 
     # -----------------------
     # CRUD, inherited methods
