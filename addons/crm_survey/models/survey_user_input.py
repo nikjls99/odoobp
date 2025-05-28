@@ -17,7 +17,7 @@ class SurveyUser_Input(models.Model):
         """
         is_lead_answer = False
         public_user_mail = None
-        description = "Question answers:"
+        description = "Answers:"
         for user_input in self:
             current_question = None
             first_answer = True
@@ -33,15 +33,22 @@ class SurveyUser_Input(models.Model):
                     description += current_question
 
                 # Write answer(s) to the question
-                answer = answer_id._get_answer_value()
-                if answer is not None:
-                    if first_answer:
-                        description += ' ' + str(answer)
-                        first_answer = False
+                if answer_id.question_id.question_type == "text_box":  # Long text box
+                    if answer_id._get_answer_value():
+                        answer = "<br/>&emsp;&emsp;" + answer_id._get_answer_value().replace('\n', "<br/>&emsp;&emsp;")
+                        description += str(answer)
                     else:
-                        description += ', ' + str(answer)
-                else:
-                    description += "<i> Skipped</i>"
+                        description += "<i> Skipped</i>"
+                else:  # Others
+                    answer = answer_id.display_name
+                    if answer is not None:
+                        if first_answer:
+                            description += ' ' + str(answer)
+                            first_answer = False
+                        else:
+                            description += ', ' + str(answer)
+                    else:
+                        description += "<i> Skipped</i>"
 
                 # Check if answer should create a lead
                 if answer_id.suggested_answer_id:
@@ -73,19 +80,24 @@ class SurveyUser_Input(models.Model):
                 else:
                     survey_responsible = False
 
+                # Get the username
+                username = user_input.partner_id.name
+                if not username:  # Public user
+                    username = "Participant#" + str(user_input.id)
+
                 dico = {
-                    'name': 'Survey ' + str(self.survey_id.id) + ' Lead - ' + self.survey_id.title,
+                    'name': f"{self.survey_id.title} - {username}",
+                    'survey_id': self.survey_id.id,
                     'user_id': survey_responsible,
                     'medium_id': medium.id,
                     'source_id': source.id,
                     'description': description,
-                    'type': 'lead',
+                    'type': 'opportunity',
                 }
 
                 if user_input.partner_id.id:  # Check if the person is connected
                     dico['partner_id'] = user_input.partner_id.id
-                    self.env['crm.lead'].create(dico)
                 else:  # Creation with Odoobot and email field answer otherwise
                     dico['email_from'] = public_user_mail
-                    odoobot = self.env.ref('base.user_root')
-                    self.env['crm.lead'].with_user(odoobot).create(dico)
+                odoobot = self.env.ref('base.user_root')
+                self.env['crm.lead'].with_user(odoobot).create(dico)  # Creating the lead

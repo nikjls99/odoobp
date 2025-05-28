@@ -14,7 +14,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
     - 2nd case: if connected user's inputs not contain "Create lead" answers, a lead isn't created anymore
     - 3rd case: if not connected user's inputs contains "Create lead" answers, then a lead is created with his email answer
     """
-    def _create_lead_qualification_survey(self, is_in_sales_team=False, survey_name=None):
+    def _create_lead_qualification_survey(self, is_in_sales_team=False, survey_name=None, survey_type="survey"):
         login = "survey_manager"
         # Adding in a sales team
         if is_in_sales_team:
@@ -31,7 +31,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
                 survey_name = 'Questionnaire for the position of software developer'
             survey = self.env['survey.survey'].create({
                 'title': survey_name,
-                'survey_type': 'survey',
+                'survey_type': survey_type,
                 'questions_layout': 'page_per_question',
                 'access_mode': 'public',
                 'users_login_required': False,
@@ -96,7 +96,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
 
     def test_connected_account_access_with_lead_generation_answer(self):
         # Step 1 : Connected access + lead generation
-        survey = self._create_lead_qualification_survey()
+        survey = self._create_lead_qualification_survey(survey_type="custom")
 
         # Account connection
         login_password = 'survey_user'
@@ -125,7 +125,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
         ### Check if the last created lead was from the survey
         last_lead_created = self.env['crm.lead'].search([], order='create_date desc', limit=1)
         self.assertTrue(last_lead_created)
-        self.assertEqual(last_lead_created.name, f"Survey {survey.id} Lead - {survey.title}")
+        self.assertEqual(last_lead_created.name, f"{survey.title} - {user.display_name}")
 
         # Ensure that the result values are present in lead description
         description = last_lead_created.description
@@ -168,7 +168,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
 
         ### Check if the last created lead was from the survey
         last_lead_created = self.env['crm.lead'].search([], order='create_date desc', limit=1)
-        self.assertNotEqual(last_lead_created.name, f"Survey {survey.id} Lead - {survey.title}")
+        self.assertNotEqual(last_lead_created.name, f"{survey.title} - {user.display_name}")
 
     def test_not_connected_account_access_with_lead_generation_answer(self):
         # Step 3 : Public access + lead generation
@@ -195,7 +195,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
 
         ### Check if the last created lead was from the survey
         last_lead_created = self.env['crm.lead'].search([], order='create_date desc', limit=1)
-        self.assertEqual(last_lead_created.name, f"Survey {survey.id} Lead - {survey.title}")
+        self.assertEqual(last_lead_created.name, f"{survey.title} - Participant#{user_inputs.id}")
 
         # Ensure that the result values are present in lead description
         description = last_lead_created.description

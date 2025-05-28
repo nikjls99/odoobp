@@ -9,7 +9,7 @@ class SurveySurvey(models.Model):
     @api.depends('created_leads', 'title')
     def _compute_created_leads(self):
         for survey in self:
-            domain = [("display_name", "ilike", "Survey " + str(self.id) + " Lead")]
+            domain = [("survey_id", "=", self.id)]
             leads = self.env['crm.lead'].search_count(domain)
             survey.created_leads = leads
 
@@ -17,21 +17,13 @@ class SurveySurvey(models.Model):
         """This method will show the leads created from the current survey"""
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id("crm.crm_lead_all_leads")
-        action['domain'] = [("display_name", "ilike", "Survey " + str(self.id) + " Lead")]
-        return action
-
-    def action_survey_user_input_completed(self):
-        action = super().action_survey_user_input_completed()
-        if self.survey_type == 'survey':
-            action.update({
-                'domain': [('survey_id.survey_type', '=', 'survey')]
-            })
+        action['domain'] = [("survey_id", "=", self.id)]
         return action
 
     def action_survey_user_input(self):
         action = super().action_survey_user_input()
-        if self.survey_type == 'survey':
+        if self.survey_type in ['survey', 'custom']:
             action.update({
-                'domain': [('survey_id.survey_type', '=', 'survey')]
+                'domain': [('survey_id.survey_type', 'in', '["survey", "custom"]')]
             })
         return action
