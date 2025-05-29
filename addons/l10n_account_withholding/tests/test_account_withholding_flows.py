@@ -224,23 +224,24 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
             'original_tax_amount': 20.0,
             'base_amount': 2000.0,
             'amount': 20.0,
-            'withholding_sequence_id': self.withholding_sequence.id,
         }])
 
-        payment_register.amount = 1150
+        with Form(payment_register) as payment_register_form:
+            # We need the custom user amount to be set for proper computation of comodel_percentage_paid_factor later on
+            # when the currency changes
+            payment_register_form.amount = 1150
+
         self.assertRecordValues(payment_register.withholding_line_ids, [{
             'original_base_amount': 2000.0,
             'original_tax_amount': 20.0,
             'base_amount': 1000.0,
             'amount': 10.0,
-            'withholding_sequence_id': self.withholding_sequence.id,
         }])
 
         payment_register.withholding_line_ids = [
             Command.create({
                 'tax_id': withholding_tax2.id,
                 'base_amount': 500.0,
-                'withholding_sequence_id': self.withholding_sequence.id,
             }),
         ]
         self.assertRecordValues(payment_register.withholding_line_ids, [
@@ -249,55 +250,45 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
                 'original_tax_amount': 20.0,
                 'base_amount': 1000.0,
                 'amount': 10.0,
-                'withholding_sequence_id': self.withholding_sequence.id,
             },
             {
                 'original_base_amount': 500.0,
                 'original_tax_amount': 10.0,
                 'base_amount': 500.0,
                 'amount': 10.0,
-                'withholding_sequence_id': self.withholding_sequence.id,
             },
         ])
 
-        payment_register.withholding_line_ids[0].name = "turlututu"
-        self.assertRecordValues(payment_register.withholding_line_ids, [
-            {
-                'original_base_amount': 2000.0,
-                'original_tax_amount': 20.0,
-                'base_amount': 1000.0,
-                'amount': 10.0,
-                'withholding_sequence_id': self.withholding_sequence.id,
-            },
-            {
-                'original_base_amount': 500.0,
-                'original_tax_amount': 10.0,
-                'base_amount': 500.0,
-                'amount': 10.0,
-                'withholding_sequence_id': self.withholding_sequence.id,
-            },
-        ])
+        with Form(payment_register) as payment_register_form:
+            # Uses the form emulator as we mix custom amounts and currency changes, which is handled by a onchange
+            payment_register_form.currency_id = comp_curr
 
-        payment_register.currency_id = comp_curr
         self.assertRecordValues(payment_register, [{
-            'amount': 1150.0,
-            'withholding_net_amount': 1140.0,
+            'amount': 575.0,
+            'withholding_net_amount': 560.0,
             'source_amount': 1150.0,
             'source_amount_currency': 2300.0,
         }])
+        # The manual line amount is not updated from a currency change; this is a current limitation
         self.assertRecordValues(payment_register.withholding_line_ids, [{
             'original_base_amount': 1000.0,
             'original_tax_amount': 10.0,
-            'base_amount': 1000.0,
+            'base_amount': 500.0,
+            'amount': 5.0,
+        },
+        {
+            'original_base_amount': 500.0,
+            'original_tax_amount': 10.0,
+            'base_amount': 500.0,
             'amount': 10.0,
-            'withholding_sequence_id': self.withholding_sequence.id,
         }])
 
-        payment_register.currency_id = foreign_curr
-        payment_register.amount = 230
+        with Form(payment_register) as payment_register_form:
+            payment_register_form.currency_id = foreign_curr
+            payment_register_form.amount = 230
         self.assertRecordValues(payment_register, [{
             'amount': 230.0,
-            'withholding_net_amount': 228.0,
+            'withholding_net_amount': 218.0,
             'source_amount': 1150.0,
             'source_amount_currency': 2300.0,
         }])
@@ -306,26 +297,44 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
             'original_tax_amount': 20.0,
             'base_amount': 200.0,
             'amount': 2.0,
+        },
+        {
+            'original_base_amount': 500.0,
+            'original_tax_amount': 10.0,
+            'base_amount': 500.0,
+            'amount': 10.0,
         }])
 
-        payment_register.withholding_line_ids.base_amount = 150.0
+        payment_register.withholding_line_ids[0].base_amount = 150.0
         self.assertRecordValues(payment_register.withholding_line_ids, [{
             'original_base_amount': 2000.0,
             'original_tax_amount': 20.0,
             'base_amount': 150.0,
             'amount': 1.5,
+        },
+        {
+            'original_base_amount': 500.0,
+            'original_tax_amount': 10.0,
+            'base_amount': 500.0,
+            'amount': 10.0,
         }])
 
-        payment_register.withholding_line_ids.amount = 2.0
+        payment_register.withholding_line_ids[0].amount = 2.0
         self.assertRecordValues(payment_register, [{
             'amount': 230.0,
-            'withholding_net_amount': 228.0,
+            'withholding_net_amount': 218.0,
         }])
         self.assertRecordValues(payment_register.withholding_line_ids, [{
             'original_base_amount': 2000.0,
             'original_tax_amount': 20.0,
             'base_amount': 150.0,
             'amount': 2.0,
+        },
+        {
+            'original_base_amount': 500.0,
+            'original_tax_amount': 10.0,
+            'base_amount': 500.0,
+            'amount': 10.0,
         }])
 
         payment = payment_register._create_payments()
@@ -334,14 +343,17 @@ class TestL10nAccountWithholdingTaxesFlows(TestTaxCommon, AnalyticCommon):
         }])
         self.assertRecordValues(payment.move_id.line_ids, [
             # Liquidity line:
-            {'balance': 114.0,      'currency_id': foreign_curr.id,     'amount_currency': 228.0},
+            {'balance': 109.0,      'currency_id': foreign_curr.id,     'amount_currency': 218.0},
             # Receivable line:
             {'balance': -115.0,     'currency_id': foreign_curr.id,     'amount_currency': -230.0},
             # withholding line:
             {'balance': 1.0,        'currency_id': foreign_curr.id,     'amount_currency': 2.0},
+            {'balance': 5.0,        'currency_id': foreign_curr.id,     'amount_currency': 10.0},
             # base lines:
             {'balance': 75.0,       'currency_id': foreign_curr.id,     'amount_currency': 150.0},
             {'balance': -75.0,      'currency_id': foreign_curr.id,     'amount_currency': -150.0},
+            {'balance': 250.0,       'currency_id': foreign_curr.id,     'amount_currency': 500.0},
+            {'balance': -250.0,      'currency_id': foreign_curr.id,     'amount_currency': -500.0},
         ])
 
     def test_withholding_tax_default_tax_on_product(self):

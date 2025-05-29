@@ -78,7 +78,7 @@ class AccountPayment(models.Model):
         ):
             return
 
-        self.withholding_line_ids = self.withholding_line_ids._prepare_update_withholding_lines_placeholder_commands()
+        self.withholding_line_ids._update_placeholders()
 
     @api.depends('should_withhold_tax')
     def _compute_withholding_line_ids(self):

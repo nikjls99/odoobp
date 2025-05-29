@@ -37,17 +37,20 @@ class AccountPaymentRegisterWithholdingLine(models.TransientModel):
 
     @api.depends('payment_register_id.amount', 'payment_register_id.can_edit_wizard', 'payment_register_id.should_withhold_tax')
     def _compute_comodel_percentage_paid_factor(self):
-        for line in self:
-            wizard = line.payment_register_id
+        for wizard, lines in self.grouped('payment_register_id').items():
             if not wizard.can_edit_wizard:
-                line.comodel_percentage_paid_factor = 0.0
+                lines.comodel_percentage_paid_factor = 0.0
                 continue
 
-            total_amount_values = wizard._get_total_amounts_to_pay(wizard.batches)
-            if total_amount_values['full_amount']:
-                line.comodel_percentage_paid_factor = abs(wizard.amount / total_amount_values['full_amount'])
+            total_amounts_to_pay = wizard._get_total_amounts_to_pay(wizard.batches)
+            moves_total_amount = wizard._get_total_amount_in_wizard_currency()
+            if total_amounts_to_pay['full_amount']:
+                # We need to care about partial payment; for example if paid in two times.
+                # In this case, the full amount is going to be the residual amount; and the factor would be wrongly "1"
+                split_factor = abs(total_amounts_to_pay['full_amount'] / moves_total_amount)
+                lines.comodel_percentage_paid_factor = abs(wizard.amount / total_amounts_to_pay['full_amount']) * split_factor
             else:
-                line.comodel_percentage_paid_factor = 0.0
+                lines.comodel_percentage_paid_factor = 0.0
 
     @api.depends('payment_register_id.payment_date')
     def _compute_comodel_date(self):
@@ -91,3 +94,8 @@ class AccountPaymentRegisterWithholdingLine(models.TransientModel):
             self.payment_register_id.journal_id.outbound_payment_method_line_ids.payment_account_id |
             self.payment_register_id.withholding_outstanding_account_id
         )
+
+    def _get_original_percentage_paid_factor(self):
+        """ To extend in order to return the original paid factor of the comodel, if any. """
+        total_amount_values = self.payment_register_id._get_total_amounts_to_pay(self.payment_register_id.batches)
+        return abs(total_amount_values['amount_by_default'] / total_amount_values['full_amount'])

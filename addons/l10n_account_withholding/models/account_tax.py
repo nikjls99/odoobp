@@ -69,9 +69,11 @@ class AccountTax(models.Model):
             super()._add_tax_details_in_base_line(base_line, company, rounding_method=rounding_method)
             return
 
+        # If a group of tax is used, we will want to flatten the taxes first to ensure that we filter out any wth tax in that group.
+        base_line_taxes = base_line["tax_ids"].flatten_taxes_hierarchy()
         new_base_line = {
             **base_line,
-            'tax_ids': base_line["tax_ids"].filtered(lambda t: not t.is_withholding_tax_on_payment),
+            'tax_ids': base_line_taxes.filtered(lambda t: not t.is_withholding_tax_on_payment),
         }
         super()._add_tax_details_in_base_line(new_base_line, company, rounding_method=rounding_method)
         new_base_line.pop('tax_ids')

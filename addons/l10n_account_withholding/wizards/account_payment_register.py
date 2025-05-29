@@ -117,12 +117,11 @@ class AccountPaymentRegister(models.TransientModel):
         ):
             return
 
-        self.withholding_line_ids = self.withholding_line_ids._prepare_update_withholding_lines_placeholder_commands()
+        self.withholding_line_ids._update_placeholders()
 
     @api.depends(
         'can_edit_wizard',
         'display_withholding',
-        'currency_id',
     )
     def _compute_withholding_line_ids(self):
         for wizard in self:
@@ -131,19 +130,18 @@ class AccountPaymentRegister(models.TransientModel):
                 wizard.withholding_line_ids = [Command.clear()]
                 continue
 
-            # Recompute the lines themselves.
-            batch = wizard.batches[0]
-            base_lines = []
-            for move in batch['lines'].move_id:
-                move_base_lines, _move_tax_lines = move._get_rounded_base_and_tax_lines()
-                base_lines += move_base_lines
+            # Compute the lines themselves once; when opening the wizard.
+            if not wizard.withholding_line_ids:
+                batch = wizard.batches[0]
+                base_lines = []
+                for move in batch['lines'].move_id:
+                    move_base_lines, _move_tax_lines = move._get_rounded_base_and_tax_lines()
+                    base_lines += move_base_lines
 
-            wizard.withholding_line_ids = wizard.withholding_line_ids._prepare_withholding_lines_commands(
-                base_lines=base_lines,
-                company=wizard.company_id or self.env.company,
-            )
-            if wizard.withholding_line_ids._need_update_withholding_lines_placeholder():
-                wizard.withholding_line_ids = wizard.withholding_line_ids._prepare_update_withholding_lines_placeholder_commands()
+                wizard.withholding_line_ids = wizard.withholding_line_ids._prepare_withholding_lines_commands(
+                    base_lines=base_lines,
+                    company=wizard.company_id or self.env.company,
+                )
 
     @api.depends('withholding_line_ids')
     def _compute_should_withhold_tax(self):
@@ -180,3 +178,30 @@ class AccountPaymentRegister(models.TransientModel):
             del withholding_line_values['placeholder_value']  # This as well
             payment_vals['withholding_line_ids'].append(Command.create(withholding_line_values))
         return payment_vals
+
+    def _get_total_amount_in_wizard_currency(self):
+        """ Returns the total amount of the first batch, in the currency of the wizard. """
+        self.ensure_one()
+        if not self.can_edit_wizard:
+            return 0.0
+
+        lines = self.batches[0]['lines']
+        wizard_curr = self.currency_id
+        comp_curr = self.company_currency_id
+
+        total = 0.0
+        for line in lines.filtered(lambda l: l.display_type == 'payment_term'):
+            currency = line.currency_id
+            if currency == wizard_curr:
+                # Same currency
+                total += line.amount_currency
+            elif currency != comp_curr and wizard_curr == comp_curr:
+                # Foreign currency on source line but the company currency one on the opposite line.
+                total += currency._convert(line.amount_currency, comp_curr, self.company_id, self.payment_date)
+            elif currency == comp_curr and wizard_curr != comp_curr:
+                # Company currency on source line but a foreign currency one on the opposite line.
+                total += comp_curr._convert(line.balance, wizard_curr, self.company_id, self.payment_date)
+            else:
+                # Foreign currency on payment different than the one set on the journal entries.
+                total += comp_curr._convert(line.balance, wizard_curr, self.company_id, self.payment_date)
+        return total

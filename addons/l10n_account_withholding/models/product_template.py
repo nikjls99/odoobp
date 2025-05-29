@@ -12,24 +12,25 @@ class Model(models.Model):
 
     def _construct_tax_string(self, price):
         # OVERRIDE 'account'
+        company_taxes = self.taxes_id.filtered(lambda t: t.company_id == self.env.company)
+
         def _get_withheld_amount():
-            wth_taxes = self.taxes_id.filtered(lambda t: t.company_id == self.env.company)
-            if not wth_taxes:
+            if not company_taxes:
                 return 0.0
 
-            base_line = wth_taxes._prepare_base_line_for_taxes_computation(
+            base_line = company_taxes._prepare_base_line_for_taxes_computation(
                 None,
                 partner_id=self.env["res.partner"],
                 currency_id=self.env.company.currency_id,
                 product_id=self,
                 quantity=1.0,
-                tax_ids=wth_taxes,
+                tax_ids=company_taxes,
                 price_unit=price,
                 calculate_withholding_taxes=True,
             )
-            wth_taxes._add_tax_details_in_base_line(base_line, self.env.company)
-            wth_taxes._round_base_lines_tax_details([base_line], self.env.company)
-            wth_taxes._add_accounting_data_to_base_line_tax_details(
+            company_taxes._add_tax_details_in_base_line(base_line, self.env.company)
+            company_taxes._round_base_lines_tax_details([base_line], self.env.company)
+            company_taxes._add_accounting_data_to_base_line_tax_details(
                 base_line,
                 self.env.company,
             )
@@ -37,12 +38,12 @@ class Model(models.Model):
             wth_total = 0.0
             for tax_data in tax_details['taxes_data']:
                 if tax_data['tax'].is_withholding_tax_on_payment:
-                    wth_total = -tax_data['tax_amount_currency']
+                    wth_total += -tax_data['tax_amount_currency']
             return wth_total
 
         # Reimplement the tax string by taking into account the withholding taxes.
         # First step; compute the amounts excluding withholding taxes.
-        res = self.taxes_id.filtered(lambda t: t.company_id == self.env.company).compute_all(
+        res = company_taxes.compute_all(
             price, product=self, partner=self.env['res.partner']
         )
         joined = []

@@ -21,6 +21,8 @@
                                     <field name="source_currency_id" column_invisible="True"/> <!-- Needed for taxes computation -->
                                     <field name="comodel_currency_id" column_invisible="True"/> <!-- Needed for taxes computation -->
                                     <field name="placeholder_value" column_invisible="True"/> <!-- Needed for the placeholder widget -->
+                                    <field name="custom_base_amount" column_invisible="True"/> <!-- Needed for the base amount computation -->
+                                    <field name="previous_base_factor" column_invisible="True"/> <!-- Needed for the base amount computation -->
                                     <field name="name"
                                            required="not withholding_sequence_id"
                                            widget="char_with_placeholder_field"

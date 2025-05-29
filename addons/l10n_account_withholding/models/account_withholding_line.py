@@ -60,16 +60,31 @@ class AccountWithholdingLine(models.AbstractModel):
     original_base_amount = fields.Monetary(
         currency_field='comodel_currency_id',
         compute='_compute_original_amounts',
+        store=True,
     )
     original_tax_amount = fields.Monetary(
         currency_field='comodel_currency_id',
         compute='_compute_original_amounts',
+        store=True,
     )
     base_amount = fields.Monetary(
         currency_field='comodel_currency_id',
         string='Withholding base',
         compute='_compute_base_amount',
         readonly=False,
+        store=True,
+    )
+    custom_base_amount = fields.Monetary(
+        currency_field='comodel_currency_id',
+        string='Custom Withholding base',
+    )
+    previous_base_factor = fields.Float(
+        compute='_compute_base_amount',
+        store=True,
+    )
+    previous_comodel_currency_id = fields.Many2one(
+        comodel_name='res.currency',
+        compute='_compute_base_amount',
         store=True,
     )
     amount = fields.Monetary(
@@ -89,8 +104,14 @@ class AccountWithholdingLine(models.AbstractModel):
         readonly=False,
         store=True,
     )
-    comodel_percentage_paid_factor = fields.Float(compute='_compute_comodel_percentage_paid_factor')
-    comodel_date = fields.Date(compute='_compute_comodel_date')
+    comodel_percentage_paid_factor = fields.Float(
+        compute='_compute_comodel_percentage_paid_factor',
+        store=True,
+    )
+    comodel_date = fields.Date(
+        compute="_compute_comodel_date",
+        store=True,
+    )
     comodel_payment_type = fields.Selection(
         selection=[
             ('outbound', 'Send Money'),
@@ -202,15 +223,22 @@ class AccountWithholdingLine(models.AbstractModel):
             line.original_base_amount = line_curr.round(base_amount * rate)
             line.original_tax_amount = line_curr.round(tax_amount * rate)
 
-    @api.depends('original_base_amount', 'comodel_percentage_paid_factor')
+    @api.depends('original_base_amount', 'comodel_percentage_paid_factor', 'comodel_currency_id')
     def _compute_base_amount(self):
         for line in self:
             line_curr = line.comodel_currency_id
+            percentage_paid_factor = line.comodel_percentage_paid_factor
             if line.source_currency_id:
-                percentage_paid_factor = line.comodel_percentage_paid_factor
-                line.base_amount = line_curr.round(line.original_base_amount * percentage_paid_factor)
+                custom_amount = line._get_custom_amount()
+                if not custom_amount:
+                    line.base_amount = line_curr.round(line.original_base_amount * percentage_paid_factor)
+                else:
+                    line.base_amount = line_curr.round(custom_amount * percentage_paid_factor)
+            # Used to determine if the base amount is custom
+            line.previous_base_factor = percentage_paid_factor
+            line.previous_comodel_currency_id = line_curr
 
-    @api.depends('source_tax_id', 'tax_id', 'base_amount')
+    @api.depends('source_tax_id', 'tax_id', 'base_amount', 'comodel_currency_id')
     def _compute_amount(self):
         for line in self:
             line_curr = line.comodel_currency_id
@@ -250,6 +278,25 @@ class AccountWithholdingLine(models.AbstractModel):
 
     def _compute_comodel_currency_id(self):
         raise NotImplementedError()
+
+    def _update_placeholders(self):
+        """ Update the placeholders for the lines in self; updating them sequentially so that the placeholders make sense. """
+        lines_per_sequence = self\
+            .sorted()\
+            .grouped(lambda line: line.placeholder_type == 'given_by_sequence' and line.withholding_sequence_id)
+        for sequence, lines in lines_per_sequence.items():
+            if sequence:
+                for i, line in enumerate(lines):
+                    line.write({
+                        'placeholder_value': sequence.get_next_char(sequence.number_next_actual + i),
+                        'previous_placeholder_type': line.placeholder_type,
+                    })
+            else:
+                for line in lines:
+                    line.write({
+                        'placeholder_value': None,
+                        'previous_placeholder_type': line.placeholder_type,
+                    })
 
     # ----------------------------
     # Onchange, Constraint methods
@@ -392,29 +439,6 @@ class AccountWithholdingLine(models.AbstractModel):
     def _need_update_withholding_lines_placeholder(self):
         return self and any(line.previous_placeholder_type != line.placeholder_type for line in self)
 
-    def _prepare_update_withholding_lines_placeholder_commands(self):
-        if not self:
-            return []
-
-        commands = []
-        lines_per_sequence = self\
-            .sorted()\
-            .grouped(lambda line: line.placeholder_type == 'given_by_sequence' and line.withholding_sequence_id)
-        for sequence, lines in lines_per_sequence.items():
-            if sequence:
-                for i, line in enumerate(lines):
-                    commands.append(Command.update(line.id, {
-                        'placeholder_value': sequence.get_next_char(sequence.number_next_actual + i),
-                        'previous_placeholder_type': line.placeholder_type,
-                    }))
-            else:
-                for line in lines:
-                    commands.append(Command.update(line.id, {
-                        'placeholder_value': None,
-                        'previous_placeholder_type': line.placeholder_type,
-                    }))
-        return commands
-
     def _get_grouping_key(self):
         """ Helper returning the grouping key for this line; should match what is done in _prepare_withholding_lines_commands. """
         self.ensure_one()
@@ -514,3 +538,43 @@ class AccountWithholdingLine(models.AbstractModel):
     def _get_valid_liquidity_accounts(self):
         """ Get the valid liquidity accounts for the payment; we need to ensure that the line account does not match any of them. """
         return ()
+
+    def _get_custom_amount(self):
+        """ This helper determines if the current amount is custom, or computed.
+
+        It will return the custom base amount; if any; in its "full" form taking into account the percentage paid factor.
+        """
+        self.ensure_one()
+
+        original_percentage_paid_factor = self._get_original_percentage_paid_factor()
+        original_default_base_amount = self.original_base_amount * original_percentage_paid_factor
+
+        percentage_paid_factor = self.comodel_percentage_paid_factor
+        current_default_base_amount = self.original_base_amount * percentage_paid_factor
+
+        if self.previous_comodel_currency_id == self.comodel_currency_id:
+            previous_original_base_amount = self.original_base_amount * self.previous_base_factor
+        else:
+            # If the currency change, we need to take that into account when checking for custom amounts
+            previous_original_base_amount = self.comodel_currency_id._convert(self.original_base_amount, self.previous_comodel_currency_id, self.company_id, self.comodel_date)
+            previous_original_base_amount *= self.previous_base_factor
+
+        if not self.base_amount:
+            return 0  # It is safe to assume that we will never have a custom amount set to 0; and that this is the initial computation
+
+        # We first compare the current base amount with different possible default value, to see if we match any.
+        is_custom_amount = (not self.comodel_currency_id.is_zero(self.base_amount - current_default_base_amount) and
+                            not self.comodel_currency_id.is_zero(self.base_amount - original_default_base_amount) and
+                            not self.comodel_currency_id.is_zero(self.base_amount - self.original_base_amount) and
+                            not self.comodel_currency_id.is_zero(self.base_amount - previous_original_base_amount))
+
+        if is_custom_amount:
+            self.custom_base_amount = self.base_amount / percentage_paid_factor
+        else:
+            self.custom_base_amount = 0
+
+        return self.custom_base_amount
+
+    def _get_original_percentage_paid_factor(self):
+        """ To extend in order to return the original paid factor of the comodel, if any. """
+        return 1.0
