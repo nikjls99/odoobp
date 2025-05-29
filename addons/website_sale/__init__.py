@@ -5,7 +5,9 @@ from . import models
 from . import report
 
 
-def _post_init_hook(env):
+def post_init_hook(env):
+    module = env["ir.module.module"].search([("name", "=", "website_sale")])
+    env["website.technical.page"].Import_static_url(module_id=module.id)
     terms_conditions = env['ir.config_parameter'].get_param('account.use_invoice_terms')
     if not terms_conditions:
         env['ir.config_parameter'].set_param('account.use_invoice_terms', True)
@@ -27,3 +29,5 @@ def uninstall_hook(env):
     multi_company_rules = pl_rule or env['ir.rule']
     multi_company_rules += pl_item_rule or env['ir.rule']
     multi_company_rules.write({'active': True})
+    module = env["ir.module.module"].search([("name", "=", "website_sale")])
+    env["website.technical.page"].sudo().search([("module_id", "=", module.id)]).unlink()
