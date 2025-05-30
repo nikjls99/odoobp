@@ -115,12 +115,6 @@ export class WebsiteBuilder extends Component {
             if (edition) {
                 this.onEditPage();
             }
-            if (!this.ui.isSmall) {
-                // preload builder and snippets so clicking on "edit" is faster
-                loadBundle("html_builder.assets").then(() => {
-                    this.env.services["html_builder.snippets"].load();
-                });
-            }
         });
         this.publicRootReady = new Deferred();
         this.setIframeLoaded();
@@ -274,6 +268,13 @@ export class WebsiteBuilder extends Component {
         if (this.props.action.context.params?.with_loader) {
             this.websiteService.hideLoader();
             this.props.action.context.params.with_loader = false;
+        }
+
+        if (!this.ui.isSmall) {
+            // Preload the snippets so clicking on "Edit" is faster
+            loadBundle("html_builder.assets").then(() => {
+                this.env.services["html_builder.snippets"].load();
+            });
         }
     }
 
