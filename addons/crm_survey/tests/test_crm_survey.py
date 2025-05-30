@@ -105,7 +105,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
         with self.with_user(login_password):
             # Start page
             self._access_start(survey)
-            user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.id)], limit=1)
+            user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.ids)], limit=1)
             user_inputs.partner_id = user.partner_id
             answer_token = user_inputs.access_token
 
@@ -149,7 +149,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
 
         # Start page
         self._access_start(survey)
-        user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.id)], limit=1)
+        user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.ids)], limit=1)
         answer_token = user_inputs.access_token
 
         # First page
@@ -176,7 +176,7 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
 
         # Start page
         self._access_start(survey)
-        user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.id)])
+        user_inputs = self.env['survey.user_input'].search([('survey_id', '=', survey.ids)])
         answer_token = user_inputs.access_token
 
         # First page

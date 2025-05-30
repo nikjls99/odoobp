@@ -17,6 +17,7 @@ class SurveyUser_Input(models.Model):
         """
         is_lead_answer = False
         public_user_mail = None
+        user_nickname = False
         description = "Answers:"
         for user_input in self:
             current_question = None
@@ -54,6 +55,10 @@ class SurveyUser_Input(models.Model):
                 if answer_id.suggested_answer_id:
                     if answer_id.suggested_answer_id.create_lead and not is_lead_answer:
                         is_lead_answer = True
+
+                # Check if the question has a nickname recorded
+                if answer_id.question_id.save_as_nickname:
+                    user_nickname = answer
 
                 # Check if the question has a email answer
                 if answer_id.question_id.validation_email:
@@ -93,11 +98,12 @@ class SurveyUser_Input(models.Model):
                     'source_id': source.id,
                     'description': description,
                     'type': 'opportunity',
+                    'contact_name': user_nickname,
                 }
 
                 if user_input.partner_id.id:  # Check if the person is connected
                     dico['partner_id'] = user_input.partner_id.id
-                else:  # Creation with Odoobot and email field answer otherwise
+                else:  # Save email field answer otherwise
                     dico['email_from'] = public_user_mail
                 odoobot = self.env.ref('base.user_root')
                 self.env['crm.lead'].with_user(odoobot).create(dico)  # Creating the lead
