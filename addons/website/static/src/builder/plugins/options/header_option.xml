@@ -141,7 +141,7 @@
                 <Img attrs="{style:'width:150px;'}" src="'/website/static/src/img/snippets_options/header_template_sales_three.svg'"/>
             </BuilderSelectItem>
             <BuilderSelectItem
-                title.translate="Menu - Sales "
+                title.translate="Menu - Sales 4"
                 actionParam="[
                     {
                         action: 'websiteConfig',
