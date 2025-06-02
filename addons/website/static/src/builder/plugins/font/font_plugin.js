@@ -5,6 +5,9 @@ import { Cache } from "@web/core/utils/cache";
 import { loadCSS } from "@web/core/assets";
 import { getCSSVariableValue } from "@html_builder/utils/utils_css";
 import { showAddFontDialog } from "./add_font_dialog";
+import { patch } from "@web/core/utils/patch";
+import { FontSizeSelector } from "@html_editor/main/font/font_size_selector";
+import { fontSizeItems } from "@html_editor/main/font/font_plugin";
 
 // TODO Website-specific
 class FontPlugin extends Plugin {
@@ -30,11 +33,38 @@ class FontPlugin extends Plugin {
         ],
     };
     setup() {
+        this.unpatchFontSizeSelector = this.patchFontSizeSelector();
         this.fontsCache = new Cache(this._fetchFonts.bind(this), JSON.stringify);
     }
     destroy() {
         super.destroy();
         this.fontsCache.invalidate();
+        this.unpatchFontSizeSelector();
+    }
+    patchFontSizeSelector() {
+        const unpatch1 = patch(FontSizeSelector, {
+            template: "website.FontSizeSelector",
+        });
+
+        const unpatch2 = patch(fontSizeItems, [
+            { variableName: "display-1-font-size", className: "display-1-fs", tag: "Display 1" },
+            { variableName: "display-2-font-size", className: "display-2-fs", tag: "Display 2" },
+            { variableName: "display-3-font-size", className: "display-3-fs", tag: "Display 3" },
+            { variableName: "display-4-font-size", className: "display-4-fs", tag: "Display 4" },
+            { variableName: "h1-font-size", className: "h1-fs", tag: "Heading 1" },
+            { variableName: "h2-font-size", className: "h2-fs", tag: "Heading 2" },
+            { variableName: "h3-font-size", className: "h3-fs", tag: "Heading 3" },
+            { variableName: "h4-font-size", className: "h4-fs", tag: "Heading 4" },
+            { variableName: "h5-font-size", className: "h5-fs", tag: "Heading 5" },
+            { variableName: "h6-font-size", className: "h6-fs", tag: "Normal" },
+            { variableName: "font-size-base", className: "base-fs", tag: "Normal" },
+            { variableName: "small-font-size", className: "o_small-fs", tag: "Small" },
+        ]);
+
+        return () => {
+            unpatch1();
+            unpatch2();
+        };
     }
     async addFont(variable) {
         const fontsData = await this.getFontsData();

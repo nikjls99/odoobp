@@ -9,7 +9,6 @@
                     <t t-foreach="items" t-as="item" t-key="item_index">
                         <DropdownItem onSelected="() => this.onSelected(item)" t-on-pointerdown.prevent="() => {}">
                             <t t-out="item.name"/>
-                            <span class="badge text-bg-secondary ms-3 float-end"><t t-out="item.tag"/></span>
                         </DropdownItem>
                     </t>
                 </div>

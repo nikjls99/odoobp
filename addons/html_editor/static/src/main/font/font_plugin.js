@@ -88,18 +88,18 @@ export const fontItems = [
 ];
 
 export const fontSizeItems = [
-    { variableName: "display-1-font-size", className: "display-1-fs", tag: "Display 1" },
-    { variableName: "display-2-font-size", className: "display-2-fs", tag: "Display 2" },
-    { variableName: "display-3-font-size", className: "display-3-fs", tag: "Display 3" },
-    { variableName: "display-4-font-size", className: "display-4-fs", tag: "Display 4" },
-    { variableName: "h1-font-size", className: "h1-fs", tag: "Heading 1" },
-    { variableName: "h2-font-size", className: "h2-fs", tag: "Heading 2" },
-    { variableName: "h3-font-size", className: "h3-fs", tag: "Heading 3" },
-    { variableName: "h4-font-size", className: "h4-fs", tag: "Heading 4" },
-    { variableName: "h5-font-size", className: "h5-fs", tag: "Heading 5" },
-    { variableName: "h6-font-size", className: "h6-fs", tag: "Normal" },
-    { variableName: "font-size-base", className: "base-fs", tag: "Normal" },
-    { variableName: "small-font-size", className: "o_small-fs", tag: "Small" },
+    { variableName: "display-1-font-size", className: "display-1-fs" },
+    { variableName: "display-2-font-size", className: "display-2-fs" },
+    { variableName: "display-3-font-size", className: "display-3-fs" },
+    { variableName: "display-4-font-size", className: "display-4-fs" },
+    { variableName: "h1-font-size", className: "h1-fs" },
+    { variableName: "h2-font-size", className: "h2-fs" },
+    { variableName: "h3-font-size", className: "h3-fs" },
+    { variableName: "h4-font-size", className: "h4-fs" },
+    { variableName: "h5-font-size", className: "h5-fs" },
+    { variableName: "h6-font-size", className: "h6-fs" },
+    { variableName: "font-size-base", className: "base-fs" },
+    { variableName: "small-font-size", className: "o_small-fs" },
 ];
 
 const rightLeafOnlyNotBlockPath = createDOMPathGenerator(DIRECTIONS.RIGHT, {
