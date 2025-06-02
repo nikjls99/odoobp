@@ -65,7 +65,7 @@ export class WebsiteSwitcherSystrayItem extends Component {
                             {
                                 type: "warning",
                                 title: _t("No website domain configured for this website."),
-                                sticky: true,
+                                autocloseDelay: 0,
                                 buttons: [
                                     {
                                         onClick: () => {
