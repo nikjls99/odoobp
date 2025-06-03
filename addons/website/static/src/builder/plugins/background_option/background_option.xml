@@ -33,7 +33,7 @@
         <!-- Color filter -->
         <BuilderRow t-if="this.showColorFilter()" label.translate="Color Filter" level="2">
             <!-- TODO handle all the attributes -->
-            <BuilderColorPicker action="'selectFilterColor'"/>
+            <BuilderColorPicker action="'selectFilterColor'" enabledTabs="['custom', 'gradient']" opacity="this.filterOpacity"/>
         </BuilderRow>
         <!-- <div t-att-data-js="with_colors and with_color_combinations and 'ColoredLevelBackground' or 'BackgroundToggler'"
             <we-colorpicker string="Color Filter"

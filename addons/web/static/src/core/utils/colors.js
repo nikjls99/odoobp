@@ -1,3 +1,28 @@
+let editableWindow = window;
+
+/**
+ * Adds opacity to the color variable, if needed
+ *
+ * @static
+ * @param {string} color - css color or css variable
+ * @param {number} opacity - [0, 1] {float}
+ * @returns {string} - CSS-compatible color string with opacity if applied, or the original input
+ */
+export function colorWithOpacity(color, opacity) {
+    let cssColor = convertCSSColorToRgba(color);
+    if (opacity) {
+        if (cssColor) {
+            return convertRgbaToCSSColor(cssColor.red, cssColor.green, cssColor.blue, opacity * 100);
+        }
+        let colorValue = getCSSVariableValue(color);
+        if (colorValue.length === 7) {
+            const hex_opacity = Math.round(opacity * 255).toString(16).padStart(2, '0')
+            colorValue += hex_opacity;
+        }
+        return colorValue;
+    }
+    return cssColor ? color : `var(--${color})`;
+}
 /**
  * Converts RGB color components to HSL components.
  *
@@ -262,6 +287,40 @@ export function convertCSSColorToRgba(cssColor) {
         };
     }
     return false;
+}
+/**
+ * @param {string} key
+ * @param {CSSStyleDeclaration} [htmlStyle] if not provided, it is computed
+ * @returns {string}
+ */
+export function getCSSVariableValue(key, htmlStyle) {
+    if (htmlStyle === undefined) {
+        htmlStyle = editableWindow.getComputedStyle(editableWindow.document.documentElement);
+    }
+    // Get trimmed value from the HTML element
+    let value = htmlStyle.getPropertyValue(`--${key}`).trim();
+    // If it is a color value, it needs to be normalized
+    value = normalizeCSSColor(value);
+    // Normally scss-string values are "printed" single-quoted. That way no
+    // magic conversation is needed when customizing a variable: either save it
+    // quoted for strings or non quoted for colors, numbers, etc. However,
+    // Chrome has the annoying behavior of changing the single-quotes to
+    // double-quotes when reading them through getPropertyValue...
+    return value.replace(/"/g, "'");
+}
+/**
+ * Adds opacity to the gradient
+ *
+ * @static
+ * @param {string} gradient - css gradient string
+ * @param {number} opacity - [0, 1] {float}
+ * @returns {string} - gradient string with opacity if applied, or the original input
+ */
+export function gradientWithOpacity(gradient, opacity) {
+    if (opacity) {
+        return gradient.replace(/rgb\(([^)]+)\)/g, `rgba($1, ${opacity})`);
+    }
+    return gradient;
 }
 /**
  * Converts a CSS color (rgb(), rgba(), hexadecimal) to a normalized version

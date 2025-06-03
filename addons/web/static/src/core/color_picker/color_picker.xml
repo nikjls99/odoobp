@@ -90,14 +90,10 @@
                     <button class="o_color_button btn selected" t-att-data-color="this.state.currentCustomColor" t-attf-style="background-color: {{this.state.currentCustomColor}}"/>
                 </div>
                 <div class="o_colorpicker_section" t-on-click="onColorApply" t-on-mouseover="onColorHover" t-on-mouseout="onColorHoverOut" t-on-focusin="onColorFocusin">
-                    <button data-color="black" class="btn o_color_button bg-black"></button>
-                    <button data-color="900" class="o_color_button btn" style="background-color: var(--900)"></button>
-                    <button data-color="800" class="o_color_button btn" style="background-color: var(--800)"></button>
-                    <button data-color="600" class="o_color_button btn" style="background-color: var(--600)"></button>
-                    <button data-color="400" class="o_color_button btn" style="background-color: var(--400)"></button>
-                    <button data-color="200" class="o_color_button btn" style="background-color: var(--200)"></button>
-                    <button data-color="100" class="o_color_button btn" style="background-color: var(--100)"></button>
-                    <button data-color="white" class="o_color_button btn bg-white"></button>
+                    <t t-set="defaultColors" t-value="['black', '900', '800', '600', '400', '200', '100', 'white']" />
+                    <t t-foreach="defaultColors" t-as="color" t-key="color">
+                        <button t-att-data-color="color" class="o_color_button btn" t-att-class="{'transparent': this.props.opacity}" t-attf-style="background-color: {{colorWithOpacity(color, this.props.opacity)}}"></button>
+                    </t>
                 </div>
                 <CustomColorPicker
                     defaultColor="this.state.currentCustomColor"
@@ -109,8 +105,8 @@
         </t>
         <t t-if="state.activeTab==='gradient'">
             <div class="o_colorpicker_sections p-2" t-on-click="onColorApply" t-on-mouseover="onColorHover" t-on-mouseout="onColorHoverOut" t-on-focusin="onColorFocusin">
-                <t t-foreach="this.DEFAULT_GRADIENT_COLORS" t-as="gradient" t-key="gradient">
-                    <button class="w-50 m-0 o_color_button o_gradient_color_button btn" t-attf-style="background-image: #{gradient};" t-att-data-color="gradient"/>
+                <t t-foreach="this.DEFAULT_GRADIENT_COLORS.map((gradient) => gradientWithOpacity(gradient, this.props.opacity))" t-as="gradient" t-key="gradient">
+                    <button class="w-50 m-0 o_color_button o_gradient_color_button btn" t-att-class="{'transparent': this.props.opacity}" t-attf-style="background-image: #{gradient};" t-att-data-color="gradient"/>
                 </t>
             </div>
             <div class="px-2">

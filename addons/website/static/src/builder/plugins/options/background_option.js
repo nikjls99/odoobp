@@ -2,6 +2,7 @@ import { BaseOptionComponent, useDomState } from "@html_builder/core/utils";
 import { BackgroundOption } from "@website/builder/plugins/background_option/background_option";
 import { ParallaxOption } from "./parallax_option";
 import { useBackgroundOption } from "@website/builder/plugins/background_option/background_hook";
+import { defaultFilterOpacity } from "../background_option/background_image_option_plugin";
 
 export class WebsiteBackgroundOption extends BaseOptionComponent {
     static template = "website.WebsiteBackgroundOption";
@@ -17,6 +18,7 @@ export class WebsiteBackgroundOption extends BaseOptionComponent {
         ...BackgroundOption.defaultProps,
         withVideos: false,
     };
+    filterOpacity = defaultFilterOpacity;
     setup() {
         super.setup();
         const { showColorFilter } = useBackgroundOption(this.isActiveItem);

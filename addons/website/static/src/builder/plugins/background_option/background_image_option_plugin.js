@@ -3,8 +3,10 @@ import { getBgImageURLFromEl, isBackgroundImageAttribute } from "@html_builder/u
 import { Plugin } from "@html_editor/plugin";
 import { removeOnImageChangeAttrs } from "@html_editor/utils/image_processing";
 import { registry } from "@web/core/registry";
-import { convertCSSColorToRgba } from "@web/core/utils/colors";
+import { convertCSSColorToRgba, colorWithOpacity, isColorGradient } from "@web/core/utils/colors";
 import { getBackgroundImageColor } from "./background_image_option";
+
+export const defaultFilterOpacity = 0.5;
 
 export class BackgroundImageOptionPlugin extends Plugin {
     static id = "backgroundImageOption";
@@ -27,6 +29,12 @@ export class BackgroundImageOptionPlugin extends Plugin {
                             filterEl.remove();
                         }
                         return;
+                    }
+                    if (!rgba && !isColorGradient(value)) {
+                        const match = value.match(/var\(--([^)]+)\)/);
+                        if (match){
+                            value = colorWithOpacity(match[1], defaultFilterOpacity);
+                        }
                     }
 
                     // Create the filter if necessary.

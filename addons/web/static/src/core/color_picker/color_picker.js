@@ -1,7 +1,7 @@
 import { Component, useEffect, useRef, useState } from "@odoo/owl";
 import { CustomColorPicker } from "@web/core/color_picker/custom_color_picker/custom_color_picker";
 import { usePopover } from "@web/core/popover/popover_hook";
-import { isCSSColor, isColorGradient } from "@web/core/utils/colors";
+import { colorWithOpacity, gradientWithOpacity, isCSSColor, isColorGradient } from "@web/core/utils/colors";
 import { cookie } from "@web/core/browser/cookie";
 import { GradientPicker } from "./gradient_picker/gradient_picker";
 import { POSITION_BUS } from "../position/position_hook";
@@ -58,12 +58,14 @@ export class ColorPicker extends Component {
         noTransparency: { type: Boolean, optional: true },
         close: { type: Function, optional: true },
         className: { type: String, optional: true },
+        opacity: { type: Number, optional: true },
     };
     static defaultProps = {
         close: () => {},
         enabledTabs: ["solid", "gradient", "custom"],
     };
-
+    colorWithOpacity = colorWithOpacity;
+    gradientWithOpacity = gradientWithOpacity;
     setup() {
         this.DEFAULT_COLORS = DEFAULT_COLORS;
         this.DEFAULT_GRADIENT_COLORS = DEFAULT_GRADIENT_COLORS;
