@@ -2382,6 +2382,16 @@ class MrpProduction(models.Model):
     def _has_workorders(self):
         return self.workorder_ids
 
+    def unlink_old_bom_moves(self):
+        # Compares the BoM's lines to the MO's pre production pick.
+        pre_production_pick = self.picking_ids.filtered(lambda p: p.picking_type_id == self.warehouse_id.pbm_type_id)
+
+        if pre_production_pick:
+            pre_production_pick.ensure_one()
+            moves_to_unlink = pre_production_pick.move_ids.filtered(lambda m: not m.bom_line_id)
+            moves_to_unlink._action_cancel()
+            moves_to_unlink.unlink()
+
     def _link_bom(self, bom):
         """ Links the given BoM to the MO. Assigns BoM's lines, by-products and operations
         to the corresponding MO's components, by-products and workorders.
@@ -2491,6 +2501,9 @@ class MrpProduction(models.Model):
                     move_raw.workorder_id = self.workorder_ids.filtered(lambda wo: wo.operation_id == move_raw.operation_id)
             elif not bom_line:
                 moves_to_unlink |= move_raw
+
+        self.unlink_old_bom_moves()
+
         # Creates a raw moves for each remaining BoM's lines.
         raw_moves_values = []
         for bom_line, bom_qty in bom_lines_by_id.values():
