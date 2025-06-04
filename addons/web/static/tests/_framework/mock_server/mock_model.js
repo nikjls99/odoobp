@@ -2628,16 +2628,17 @@ export class Model extends Array {
         aggregates,
         forcedOrder,
         infoOpening,
-        unfoldedGroupLimit,
+        nbAutoOpen,
         webSearchArgs,
         groupbyReadSpecification
     ) {
-        let groupInfos = {};
-        if (infoOpening) {
-            groupInfos = Object.fromEntries(infoOpening.map((info) => [info["value"], info]));
+        let groupInfos = false;
+        if (infoOpening && infoOpening.length !== 0) {
+            groupInfos = Object.fromEntries(infoOpening.map((info) => [info.value, info]));
         }
         const previousGroupby = remainingGroupby[0];
         const field = this._fields[previousGroupby.split(":")[0]];
+        let nbOpenedGroup = 0;
 
         if (groupbyReadSpecification && Object.hasOwn(groupbyReadSpecification, previousGroupby)) {
             const readSpec = groupbyReadSpecification[previousGroupby];
@@ -2647,65 +2648,44 @@ export class Model extends Array {
             }
         }
 
-        if (remainingGroupby.length < 2) {
-            // Open records
-            for (const group of groups) {
-                let groupValue = group[previousGroupby];
-                if (Array.isArray(groupValue)) {
-                    groupValue = groupValue[0];
-                }
-                const groupDomain = [...group.__extra_domain, ...mainDomain];
-                const argsRead = { ...webSearchArgs };
-                if (infoOpening && infoOpening.length) {
-                    if (!Object.hasOwn(groupInfos, groupValue)) {
-                        continue;
-                    }
-                    const groupInfo = groupInfos[groupValue];
-                    if (groupInfo.folded) {
-                        continue;
-                    }
-                    if (Array.isArray(groupInfo.extra_domain)) {
-                        groupDomain.push(...groupInfo.extra_domain);
-                    }
-                    argsRead.limit = groupInfo.limit;
-                    argsRead.offset = groupInfo.offset;
-                } else {
-                    // First load
-                    if (field.relation && !groupValue) {
-                        continue;
-                    }
-                    if (Object.hasOwn(group, "__fold") && group.__fold) {
-                        continue;
-                    }
-                }
-                if ((!infoOpening || !infoOpening.length) && !unfoldedGroupLimit) {
+        for (const group of groups) {
+            let fold = false;
+            if (Object.hasOwn(group, "__fold")) {
+                fold = group.__fold;
+                delete group.__fold;
+            }
+
+            if (nbAutoOpen && nbOpenedGroup >= nbAutoOpen) {
+                continue;
+            }
+
+            const groupbyValue = group[previousGroupby];
+            const rawGroupbyValue = Array.isArray(groupbyValue) ? groupbyValue[0] : groupbyValue;
+
+            const argsRead = { ...webSearchArgs };
+            let subgroupOpeningInfo = null;
+            let extraDomain = [];
+            if (groupInfos && Object.hasOwn(groupInfos, rawGroupbyValue)) {
+                const groupInfo = groupInfos[rawGroupbyValue];
+                if (groupInfo.folded) {
                     continue;
                 }
-                // Open groups
-                unfoldedGroupLimit -= 1;
+                argsRead.limit = groupInfo.limit;
+                argsRead.offset = groupInfo.offset;
+                extraDomain = groupInfo.extra_domain || [];
+                subgroupOpeningInfo = groupInfo.groups;
+            } else if (!nbAutoOpen || fold || (field.relation && !groupbyValue)) {
+                continue;
+            }
+
+            nbOpenedGroup += 1;
+            if (remainingGroupby.length == 1) {
+                const groupDomain = [...group.__extra_domain, ...mainDomain, ...extraDomain];
                 group.__records = this.web_search_read(
                     groupDomain,
                     ...Object.values(argsRead)
                 ).records;
-            }
-        } else if (infoOpening) {
-            // Open subgroups
-            for (const group of groups) {
-                let groupValue = group[previousGroupby];
-                if (Array.isArray(groupValue)) {
-                    groupValue = groupValue[0];
-                }
-                if (!infoOpening) {
-                    continue;
-                }
-                if (!Object.hasOwn(groupInfos, groupValue)) {
-                    continue;
-                }
-                const groupInfo = groupInfos[groupValue];
-                if (groupInfo.folded) {
-                    continue;
-                }
-
+            } else {
                 const groupDomain = [...group.__extra_domain, ...mainDomain];
 
                 let groups = this.formatted_read_group(
@@ -2718,7 +2698,7 @@ export class Model extends Array {
                     getReadGroupOrder(forcedOrder, [remainingGroupby[1]], aggregates)
                 );
                 const length = groups.length;
-                groups = groups.slice(groupInfo.offset ? groupInfo.offset - 1 : 0, groupInfo.limit);
+                groups = groups.slice(argsRead.offset ? argsRead.offset - 1 : 0, argsRead.limit);
                 group.__groups = { groups, length };
 
                 this._openGroups(
@@ -2727,8 +2707,8 @@ export class Model extends Array {
                     remainingGroupby.slice(1),
                     aggregates,
                     forcedOrder,
-                    groupInfo.groups,
-                    unfoldedGroupLimit,
+                    subgroupOpeningInfo,
+                    0,
                     webSearchArgs,
                     groupbyReadSpecification
                 );

@@ -440,10 +440,12 @@ export class RelationalModel extends Model {
                         list: {
                             ...commonConfig,
                             groupBy: nextLevelGroupBy,
+                            groups: {},
                             limit:
                                 nextLevelGroupBy.length === 0
                                     ? this.initialLimit
-                                    : this.initialGroupsLimit,
+                                    : this.initialGroupsLimit ||
+                                      this.constructor.DEFAULT_GROUP_LIMIT,
                         },
                     };
                 }

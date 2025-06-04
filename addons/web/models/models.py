@@ -481,9 +481,9 @@ class Base(models.AbstractModel):
                 info_opening['value']: info_opening
                 for info_opening in current_opening_info or ()
             }
-            nb_open_group = 0
             groupby_spec = remaining_groupby[0]
             field = self._fields[groupby_spec.split(':')[0]]
+            nb_opened_group = 0
 
             open_records = len(remaining_groupby) == 1
             if not open_records:
@@ -496,13 +496,15 @@ class Base(models.AbstractModel):
 
                 # Apply the limit of unfolded if there is whatever the current_opening_info
                 # That's weird, but keeps the old behavior
-                if nb_auto_open and nb_open_group >= nb_auto_open:
-                    break
+                if nb_auto_open and nb_opened_group >= nb_auto_open:
+                    continue
 
-                # If reload specific config
                 groupby_value = group[groupby_spec]
                 raw_groupby_value = groupby_value[0] if isinstance(groupby_value, (list, tuple)) else groupby_value
 
+                limit = unfold_read_default_limit
+                offset = 0
+                extra_domain = subgroup_opening_info = None
                 if opening_info and raw_groupby_value in current_opening_info_dict:
                     group_info = current_opening_info_dict[raw_groupby_value]
                     if group_info['folded']:
@@ -512,20 +514,16 @@ class Base(models.AbstractModel):
                     extra_domain = group_info['extra_domain']
                     subgroup_opening_info = group_info.get('groups')
 
-                else:  # Auto unfold
-                    if (
-                        not nb_auto_open or fold or
-                        # False value => folded by default
-                        (field.relational and not group[groupby_spec])
-                    ):
-                        continue
+                elif (  # Auto Fold/unfold
+                    not nb_auto_open or fold or
+                    # False value => folded by default
+                    (field.relational and not group[groupby_spec])
+                ):
+                    continue
 
-                    limit = unfold_read_default_limit
-                    offset = 0
-                    extra_domain = subgroup_opening_info = None
+                # => Open group
 
-                # => Open the group
-                nb_open_group += 1
+                nb_opened_group += 1
                 if open_records:  # Open records
                     records_domain = group_domain & Domain(group['__extra_domain'])
 
