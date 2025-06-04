@@ -729,6 +729,9 @@ export function createRelatedModels(modelDefs, modelClasses = {}, opts = {}) {
                 const field = ownFields[name];
                 const comodelName = field.relation;
                 const comodel = this.models[comodelName];
+                if ((X2MANY_TYPES.has(field.type) || field.type === "many2one") && !comodel) {
+                    continue;
+                }
                 if (X2MANY_TYPES.has(field.type)) {
                     for (const command of vals[name]) {
                         const [type, ...items] = command;
@@ -756,7 +759,7 @@ export function createRelatedModels(modelDefs, modelClasses = {}, opts = {}) {
                         } else if (type === "set") {
                             const linkedRecs = record[name];
                             const existingRecords = items.filter((record) =>
-                                comodel.exist(record.id)
+                                comodel.exists(record.id)
                             );
 
                             for (const record2 of [...linkedRecs]) {
@@ -861,12 +864,13 @@ export function createRelatedModels(modelDefs, modelClasses = {}, opts = {}) {
         get indexedRecords() {
             return indexedRecords;
         }
-        loadData(rawData, load = [], fromSerialized = false) {
+        loadData(rawData, load = [], fromSerialized = false, keepLocalRelation = false) {
             return disabler.call(
                 (...args) => this._loadData(...args),
                 rawData,
                 load,
-                fromSerialized
+                fromSerialized,
+                keepLocalRelation
             );
         }
         makeRecordsAvailable(results, rawData) {
@@ -934,12 +938,23 @@ export function createRelatedModels(modelDefs, modelClasses = {}, opts = {}) {
 
                             const params = getFields(model)[field];
                             if (params && X2MANY_TYPES.has(params.type)) {
+                                const comodel = oldRecord.models[params.relation];
+                                if (!comodel) {
+                                    continue;
+                                }
                                 value.push(
                                     ...oldRecord[field]
                                         .filter((r) => typeof r.id === "string")
                                         .map((r) => r.id)
                                 );
-                                vals[field] = ["set", value];
+                                vals[field] = [
+                                    [
+                                        "set",
+                                        ...comodel.readMany(
+                                            value.filter((id) => comodel.exists(id))
+                                        ),
+                                    ],
+                                ];
                             }
                         }
 
