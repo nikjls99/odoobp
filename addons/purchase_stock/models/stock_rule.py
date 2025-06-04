@@ -76,7 +76,7 @@ class StockRule(models.Model):
             if not supplier and self.env.context.get('from_orderpoint'):
                 msg = _('There is no matching vendor price to generate the purchase order for product %s (no vendor defined, minimum quantity not reached, dates not valid, ...). Go on the product form and complete the list of vendors.', procurement.product_id.display_name)
                 errors.append((procurement, msg))
-            elif not supplier:
+            elif not supplier and procurement.values.get('supplier_is_partner') is not True:
                 # If the supplier is not set, we cannot create a PO.
                 moves = procurement.values.get('move_dest_ids') or self.env['stock.move']
                 if moves.propagate_cancel:
@@ -85,10 +85,14 @@ class StockRule(models.Model):
                 self._notify_responsible(procurement)
                 return
 
-            partner = supplier.partner_id
+            partner = supplier.partner_id if supplier else procurement.values.get('group_id').partner_id
             # we put `supplier_info` in values for extensibility purposes
             procurement.values['supplier'] = supplier
             procurement.values['propagate_cancel'] = rule.propagate_cancel
+
+            if procurement.values.get('supplier_is_partner') is True:
+                del procurement.values['supplier']  # flag to make procurment run without supplierinfo
+                procurement.values['date_order'] = fields.Date.today()
 
             domain = rule._make_po_get_domain(company_id, procurement.values, partner)
             procurements_by_po_domain[domain].append((procurement, rule))
@@ -154,12 +158,17 @@ class StockRule(models.Model):
                     # If it does not exist a PO line for current procurement.
                     # Generate the create values for it and add it to a list in
                     # order to create it in batch.
-                    partner = procurement.values['supplier'].partner_id
+                    if procurement.values.get('supplier'):
+                        partner = procurement.values.get('supplier').partner_id
+                    elif procurement.values.get('group_id'):
+                        partner = procurement.values.get('group_id').partner_id
+
                     po_line_values.append(self.env['purchase.order.line']._prepare_purchase_order_line_from_procurement(
                         *procurement, po))
                     # Check if we need to advance the order date for the new line
                     order_date_planned = procurement.values['date_planned'] - relativedelta(
-                        days=procurement.values['supplier'].delay)
+                        days=procurement.values['supplier'].delay) if procurement.values.get(
+                            'supplier') else procurement.values['date_planned']
                     if fields.Date.to_date(order_date_planned) < fields.Date.to_date(po.date_order):
                         po.date_order = order_date_planned
             self.env['purchase.order.line'].sudo().create(po_line_values)
@@ -296,8 +305,14 @@ class StockRule(models.Model):
         # the common procurements values. The common values are taken from an
         # arbitrary procurement. In this case the first.
         values = values[0]
-        partner = values['supplier'].partner_id
-        currency = values['supplier'].currency_id
+
+        supplier = values.get('supplier')
+        if supplier:
+            partner = supplier.partner_id
+            currency = supplier.currency_id
+        elif values.get('group_id'):
+            partner = values['group_id'].partner_id
+            currency = partner.with_company(company_id).property_purchase_currency_id or company_id.currency_id
 
         fpos = self.env['account.fiscal.position'].with_company(company_id)._get_fiscal_position(partner)
 
