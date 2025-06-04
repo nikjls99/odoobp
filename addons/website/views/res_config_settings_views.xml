@@ -232,6 +232,12 @@
         <field name="context">{'module' : 'website', 'bin_size': False}</field>
     </record>
 
+    <record id="portal_entry_action" model="ir.actions.act_window">
+        <field name="name">Portal Entry</field>
+        <field name="res_model">portal.entry</field>
+        <field name="view_id" eval="False"/>
+    </record>
+
     <menuitem id="menu_website_global_configuration" parent="menu_website_configuration"
         sequence="100" name="Configuration" groups="base.group_system"/>
 
@@ -258,6 +264,13 @@
         action="action_website_menu"
         parent="menu_website_global_configuration"
         sequence="45"
+        groups="base.group_no_one"/>
+
+    <menuitem id="portal_entry_menu"
+        name="Portal Blocks"
+        action="portal_entry_action"
+        parent="menu_website_global_configuration"
+        sequence="10"
         groups="base.group_no_one"/>
 
 </odoo>

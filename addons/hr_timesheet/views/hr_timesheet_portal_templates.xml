@@ -23,6 +23,16 @@
         </div>
     </template>
 
+    <data noupdate="1">
+        <record id="portal_timesheets" model="portal.entry">
+            <field name="name">Timesheets</field>
+            <field name="description">Review all timesheets related to your projects</field>
+            <field name="url">/my/timesheets</field>
+            <field name="image" type="base64" file="hr_timesheet/static/img/timesheet.svg"/>
+            <field name="is_alert">True</field>
+        </record>
+    </data>
+
     <template id="portal_my_timesheets" name="My Timesheets">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>

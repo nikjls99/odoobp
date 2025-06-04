@@ -1,5 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <data noupdate="1">
+        <record id="portal_entry_addresses" model="portal.entry">
+            <field name="name">Addresses</field>
+            <field name="description">Add, remove or modify your addresses</field>
+            <field name="url">/my/addresses</field>
+            <field name="image" type="base64" file="portal/static/src/img/portal-addresses.svg"/>
+            <field name="is_alert">True</field>
+        </record>
+        <record id="portal_entry_base" model="portal.entry">
+            <field name="name">Connection &amp; Security</field>
+            <field name="description">Configure your connection parameters</field>
+            <field name="url">/my/security</field>
+            <field name="image" type="base64" file="portal/static/src/img/portal-connection.svg"/>
+            <field name="is_alert">True</field>
+        </record>
+    </data>
     <template id="frontend_layout" name="Main Frontend Layout" inherit_id="web.frontend_layout">
         <xpath expr="//div[@id='wrapwrap']" position="attributes">
             <attribute name="t-attf-class" add="#{request.env['res.lang']._get_data(code=request.env.lang).direction == 'rtl' and 'o_rtl' or ''}" separator=" "/>
@@ -234,7 +250,7 @@
                     <div t-if="portal_service_category_enable" class="o_portal_category row g-2 mt-3" id="portal_service_category"/>
                     <div t-if="portal_vendor_category_enable" class="o_portal_category row g-2 mt-3" id="portal_vendor_category"/>
                     <div class="o_portal_category row g-2 mt-3" id="portal_common_category">
-                        <t t-call="portal.portal_docs_entry">
+                        <!-- <t t-call="portal.portal_docs_entry">
                             <t t-set="icon" t-value="'/portal/static/src/img/portal-addresses.svg'"/>
                             <t t-set="title">Addresses</t>
                             <t t-set="text">Add, remove or modify your addresses</t>
@@ -247,6 +263,15 @@
                             <t t-set="text">Configure your connection parameters</t>
                             <t t-set="url" t-value="'/my/security'"/>
                             <t t-set="config_card" t-value="True"/>
+                        </t> -->
+                        <t t-foreach="portal_entries" t-as="entry">
+                            <t t-call="portal.portal_docs_entry" t-if="entry.is_alert">
+                                <t t-set="icon" t-value="'/web/image/portal.entry/%s/image' % entry.id"/>
+                                <t t-set="title" t-value="entry.name" />
+                                <t t-set="text" t-value="entry.description" />
+                                <t t-set="url" t-value="entry.url"/>
+                                <t t-set="config_card" t-value="True"/>
+                            </t>
                         </t>
                     </div>
                     <div class="o_portal_doc_spinner spinner-border text-o-color-2 align-self-center mt-5"/>
