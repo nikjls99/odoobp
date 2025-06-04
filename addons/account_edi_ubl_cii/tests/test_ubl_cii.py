@@ -389,3 +389,33 @@ class TestAccountEdiUblCii(AccountTestInvoicingCommon):
         })
         imported_invoice = self.import_attachment(xml_attachment, self.company_data["default_journal_sale"])
         self.assertFalse(imported_invoice.invoice_line_ids.discount)  # if slight rounding error won't be falsy
+
+    def test_invoice_with_dutch_partner(self):
+        partner = self.env['res.partner'].create({
+            'name': "Dutch Partner",
+            'email': "mypartner@email.com",
+            'ubl_cii_format': 'nlcius',
+            'country_id': self.env.ref('base.nl').id,
+        })
+
+        bank = self.env['res.partner.bank'].create({
+            'acc_number': '1234567890',
+            'partner_id': partner.id,
+        })
+
+        invoice = self.env['account.move'].create({
+            'partner_id': partner.id,
+            'move_type': 'out_invoice',
+            'invoice_line_ids': [Command.create({'product_id': self.product_a.id})],
+            'partner_bank_id': bank.id,
+        })
+        invoice.action_post()
+
+        template = self.env.ref('account.email_template_edi_invoice', raise_if_not_found=False)
+        print_wizard = self.env['account.move.send'].create({
+            'move_ids': invoice.ids,
+            'mail_template_id': template.id,
+        })
+        print_wizard.checkbox_ubl_cii_xml = True
+        print_wizard.action_send_and_print()
+        self.assertTrue(invoice.is_move_sent)

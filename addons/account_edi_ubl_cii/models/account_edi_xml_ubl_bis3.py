@@ -81,10 +81,10 @@ class AccountEdiXmlUBLBIS3(models.AbstractModel):
                 # For NL, VAT can be used as a Peppol endpoint, but KVK/OIN has to be used as PartyLegalEntity/CompanyID
                 # To implement a workaround on stable, company_registry field is used without recording whether
                 # the number is a KVK or OIN, and the length of the number (8 = KVK, 9 = OIN) is used to determine the type
-                nl_id = partner.company_registry if partner.peppol_eas not in ('0106', '0190') else partner.peppol_endpoint
+                nl_id = partner.company_registry if partner.company_registry and partner.peppol_eas not in ('0106', '0190') else partner.peppol_endpoint
                 vals.update({
                     'company_id': nl_id,
-                    'company_id_attrs': {'schemeID': '0190' if len(nl_id) == 9 else '0106'},
+                    'company_id_attrs': {'schemeID': '0190' if nl_id and len(nl_id) == 9 else '0106'},
                 })
             if partner.country_id.code == "LU":
                 if 'l10n_lu_peppol_identifier' in partner._fields and partner.l10n_lu_peppol_identifier:
