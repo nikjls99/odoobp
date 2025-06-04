@@ -2230,3 +2230,31 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
 
         self.assertEqual(pickings[0].state, 'done')
         self.assertEqual(len(sale_order.order_line), 1)
+
+    def test_multicompany_transit_with_one_company_for_user(self):
+        """ Check that the inter-company transit location is created when
+        user has only one allowed company. """
+        company_a = self.env['res.company'].create({'name': 'Company A'})
+        company_b = self.env['res.company'].create({'name': 'Company B'})
+        user_a = self.env['res.users'].create({
+            'name': 'user company a with access to company b',
+            'login': 'user a',
+            'company_id': company_a.id,
+            'company_ids': [(6, 0, company_a.ids)]
+        })
+        product = self.env['product.product'].create({
+            'name': 'product',
+        })
+        so = self.env['sale.order'].with_user(user_a).create({
+            'partner_id': company_b.partner_id.id,
+            'order_line': [
+                Command.create({
+                    'product_id': product.id,
+                }),
+            ],
+        })
+        so.action_confirm()
+        intercom_location = self.env.ref('stock.stock_location_inter_company')
+        customer_location = company_b.partner_id.property_stock_customer
+        self.assertEqual(so.picking_ids.location_dest_id, customer_location)
+        self.assertEqual(so.picking_ids.move_ids.location_dest_id, intercom_location)
