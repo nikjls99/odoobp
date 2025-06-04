@@ -1408,6 +1408,8 @@ Attempting to double-book your time off won't magically make your vacation 2x be
     def get_unusual_days(self, date_from, date_to=None):
         employee_id = self.env.context.get('employee_id', False)
         employee = self.env['hr.employee'].browse(employee_id) if employee_id else self.env.user.employee_id
+        if employee.is_flexible:
+            return False
         return employee.sudo(False)._get_unusual_days(date_from, date_to)
 
     def _to_utc(self, date, hour, resource):

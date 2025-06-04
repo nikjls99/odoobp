@@ -141,3 +141,28 @@ class TestWorkingHours(TestHrCalendarCommon):
             {'daysOfWeek': [5], 'startTime': '08:00', 'endTime': '12:00'},
             {'daysOfWeek': [5], 'startTime': '13:00', 'endTime': '16:00'},
         ])
+
+    def test_flexible_working_hours(self):
+        """
+        Test to verifie that get_unusual_days() return false for flexible work schedule
+        """
+
+        # Creating a flexible working schedule
+        calendar_flex = self.env['resource.calendar'].create([
+            {
+                'tz': "Europe/Brussels",
+                'name': 'flexible hours',
+                'flexible_hours': "True",
+            },
+        ])
+
+        # Testing employeA on regular working schedule
+        leave = self.env['hr.leave'].browse(0)
+        leave = leave.with_context(employee_id=self.employeeA.id)
+        days = leave.get_unusual_days(datetime(2025, 1, 1), datetime(2025, 12, 31))
+        self.assertTrue(days)
+
+        # Assigning flexible work hours to employeeA
+        self.employeeA.resource_calendar_id = calendar_flex.id
+        days = leave.get_unusual_days(datetime(2025, 1, 1), datetime(2025, 12, 31))
+        self.assertFalse(days)
