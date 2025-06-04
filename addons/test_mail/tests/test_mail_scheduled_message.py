@@ -206,3 +206,25 @@ class TestScheduledMessageBusiness(TestScheduledMessage, CronMixinCase):
             self.assertEqual(self._new_mails[0].state, 'sent')
             # scheduled messages shouldn't exist anymore
             self.assertFalse(self.env['mail.scheduled.message'].search([['id', 'in', [scheduled_message_id, failing_schedueld_message_id]]]))
+
+    @users('employee')
+    def test_scheduled_message_posting_on_scheduled_time_and_with_custom_subject(self):
+        """ Ensure scheduled message is posted and sent at the scheduled time,
+            also check that custom mail subject is passed properly.
+        """
+        self.test_record.message_subscribe(partner_ids=[self.partner_1.id])
+
+        self.schedule_message(
+            self.test_record,
+            scheduled_date=FieldDatetime.to_string(self.reference_now),
+            subject='new subject'
+        )
+
+        with self.mock_mail_gateway(), self.mock_datetime_and_now(self.reference_now):
+            # Needed to get force_send disabled due to mail_notify_force_send in the context
+            self.env.ref('mail.ir_cron_post_scheduled_message').with_user(self.user_admin).method_direct_trigger()
+
+            # Message is posted and mail is sent on time
+            self.assertEqual(len(self._new_mails), 1)
+            self.assertEqual(self._new_mails[0].state, 'sent')
+            self.assertEqual(self._new_mails[0].subject, 'new subject')

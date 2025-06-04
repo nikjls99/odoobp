@@ -187,6 +187,7 @@ class ScheduledMessage(models.Model):
                     attachment_ids=list(scheduled_message.attachment_ids.ids),
                     author_id=scheduled_message.author_id.id,
                     body=scheduled_message.body,
+                    subject=scheduled_message.subject,
                     partner_ids=list(scheduled_message.partner_ids.ids),
                     subtype_xmlid='mail.mt_note' if scheduled_message.is_note else 'mail.mt_comment',
                     **{k: v for k, v in json.loads(scheduled_message.notification_parameters or '{}').items() if k in notification_parameters_whitelist},
@@ -271,7 +272,7 @@ class ScheduledMessage(models.Model):
         domain = [('scheduled_date', '<=', fields.Datetime.now())]
         messages_to_post = self.search(domain, limit=limit)
         _logger.info("Posting %s scheduled messages", len(messages_to_post))
-        messages_to_post._post_message(raise_exception=False)
+        messages_to_post.with_context(mail_notify_force_send=True)._post_message(raise_exception=False)
 
         # restart cron if needed
         if self.search_count(domain, limit=1):
