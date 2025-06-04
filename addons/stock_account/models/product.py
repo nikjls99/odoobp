@@ -91,6 +91,8 @@ will update the cost of every lot/serial number in stock."),
         res = super(ProductTemplate, self).write(vals)
 
         for product_template, (products, description, products_orig_quantity_svl) in impacted_templates.items():
+            if not products.exists():
+                continue
             # Replenish the stock with the new cost method.
             in_svl_vals_list = products._svl_replenish_stock(description, products_orig_quantity_svl)
             in_stock_valuation_layers = SVL.create(in_svl_vals_list)
