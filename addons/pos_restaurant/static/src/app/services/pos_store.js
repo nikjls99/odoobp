@@ -854,14 +854,18 @@ patch(PosStore.prototype, {
         if (!destCourse) {
             return;
         }
+        const lines = [];
         if (selectedLine) {
-            selectedLine.course_id = destCourse.id;
+            lines.push(selectedLine);
+            if (selectedLine.combo_line_ids?.length) {
+                lines.push(...selectedLine.combo_line_ids);
+            }
         } else {
-            const lines = [...selectedCourse.lines];
-            lines.forEach((line) => {
-                line.course_id = destCourse.id;
-            });
+            lines.push(...selectedCourse.lines);
         }
+        lines.forEach((line) => {
+            line.course_id = destCourse.id;
+        });
         order.selectCourse(destCourse);
         order.recomputeOrderData();
     },
