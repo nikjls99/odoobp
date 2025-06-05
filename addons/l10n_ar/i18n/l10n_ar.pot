@@ -6,14 +6,19 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 17.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-12 13:15+0000\n"
-"PO-Revision-Date: 2025-03-12 13:15+0000\n"
+"POT-Creation-Date: 2025-04-22 12:26+0000\n"
+"PO-Revision-Date: 2025-04-22 12:26+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Plural-Forms: \n"
+
+#. module: l10n_ar
+#: model_terms:ir.ui.view,arch_db:l10n_ar.report_invoice_document
+msgid "% VAT"
+msgstr ""
 
 #. module: l10n_ar
 #: model_terms:res.company,invoice_terms_html:l10n_ar.company_exento
@@ -412,6 +417,7 @@ msgstr ""
 
 #. module: l10n_ar
 #: model_terms:ir.ui.view,arch_db:l10n_ar.report_invoice_document
+<<<<<<< 87c45dc3f3d5ae0b5efc03a1503c9a8dd764ff8e
 msgid "<span>% VAT</span>"
 msgstr ""
 
@@ -422,6 +428,14 @@ msgstr ""
 
 #. module: l10n_ar
 #: model_terms:ir.ui.view,arch_db:l10n_ar.report_invoice_document
+||||||| 26ce462f84c538a62df05568c232f336d1ea2d47
+msgid "<span>% VAT</span>"
+msgstr ""
+
+#. module: l10n_ar
+#: model_terms:ir.ui.view,arch_db:l10n_ar.report_invoice_document
+=======
+>>>>>>> af935496c380aa7458db84b3ec3acb2e4d5ca3b0
 msgid "<span>NCM</span>"
 msgstr ""
 
