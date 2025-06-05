@@ -1,3 +1,5 @@
+from datetime import date
+
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo import Command
 
@@ -9,6 +11,7 @@ class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
         super().setUpClass()
 
         cls.maxDiff = None
+        cls.test_date = date(2023, 5, 20)
 
         # === Countries === #
         cls.country_in = cls.env.ref('base.in')
@@ -75,15 +78,20 @@ class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
         })
 
         # === Taxes === #
-        cls.sgst_sale_5 = cls.env["account.chart.template"].ref('sgst_sale_5')
-        cls.sgst_purchase_5 = cls.env["account.chart.template"].ref('sgst_purchase_5')
-        cls.igst_sale_5 = cls.env["account.chart.template"].ref('igst_sale_5')
-        cls.igst_sale_18 = cls.env["account.chart.template"].ref('igst_sale_18')
-        cls.sgst_sale_18 = cls.env["account.chart.template"].ref('sgst_sale_18')
+        ChartTemplate = cls.env['account.chart.template']
+
+        cls.sgst_sale_5 = ChartTemplate.ref('sgst_sale_5')
+        cls.sgst_purchase_5 = ChartTemplate.ref('sgst_purchase_5')
+        cls.igst_sale_5 = ChartTemplate.ref('igst_sale_5')
+        cls.igst_sale_18 = ChartTemplate.ref('igst_sale_18')
+        cls.sgst_sale_18 = ChartTemplate.ref('sgst_sale_18')
         cls.gst_with_cess = (
-            cls.env['account.chart.template'].ref("sgst_sale_12")
-            + cls.env['account.chart.template'].ref("cess_5_plus_1591_sale")
+            ChartTemplate.ref("sgst_sale_12")
+            + ChartTemplate.ref("cess_5_plus_1591_sale")
         )
+        cls.exempt_tax = ChartTemplate.ref('exempt_sale')
+        cls.nil_rated_tax = ChartTemplate.ref('nil_rated_sale')
+        cls.non_gst_supplies = ChartTemplate.ref('non_gst_supplies_sale')
 
         # === Products === #
         cls.product_a.write({
@@ -113,9 +121,9 @@ class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
         })
 
         # === Fiscal Positions === #
-        cls.fp_in_intra_state = cls.env["account.chart.template"].ref('fiscal_position_in_intra_state')
-        cls.fp_in_inter_state = cls.env["account.chart.template"].ref('fiscal_position_in_inter_state')
-        cls.fp_in_export = cls.env["account.chart.template"].ref('fiscal_position_in_export_sez_in')
+        cls.fp_in_intra_state = ChartTemplate.ref('fiscal_position_in_intra_state')
+        cls.fp_in_inter_state = ChartTemplate.ref('fiscal_position_in_inter_state')
+        cls.fp_in_export = ChartTemplate.ref('fiscal_position_in_export_sez_in')
 
         # === Invoices === #
         cls.invoice_a = cls.init_invoice(
@@ -138,3 +146,60 @@ class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
             amounts=[300, 740],
             taxes=cls.igst_sale_18,
         )
+
+    @classmethod
+    def _set_vals_and_post(cls, move, ref=None, line_vals=None, post=True, irn=None):
+        if ref:
+            move.ref = ref
+        if irn:
+            move.l10n_in_irn_number = irn
+
+        if line_vals:
+            move.write({'invoice_line_ids': [Command.update(line.id, line_vals) for line in move.line_ids]})
+
+        if post:
+            move.action_post()
+        return move
+
+    @classmethod
+    def _init_inv(cls, move_type='out_invoice', company=None, ref=None, partner=None, taxes=None, invoice_date=None, products=None, line_vals=None, post=True, irn=None):
+        return cls._set_vals_and_post(
+            move=cls.init_invoice(
+                move_type,
+                products=products or cls.product_a,
+                invoice_date=invoice_date or cls.test_date,
+                taxes=taxes,
+                company=company or cls.default_company,
+                partner=partner,
+            ),
+            ref=ref,
+            irn=irn,
+            line_vals=line_vals,
+            post=post
+        )
+
+    @classmethod
+    def _create_credit_note(cls, inv, ref=None, credit_note_date=None, line_vals=None, post=True):
+        move = inv._reverse_moves()
+        move.invoice_date = credit_note_date or cls.test_date
+
+        return cls._set_vals_and_post(
+            move=move,
+            ref=ref,
+            line_vals=line_vals,
+            post=post
+        )
+
+    @classmethod
+    def _create_debit_note(cls, inv, ref=None, debit_note_date=None, line_vals=None):
+        move_debit_note_wiz = cls.env['account.debit.note'].with_context(
+            active_model="account.move",
+            active_ids=inv.ids
+        ).create({
+            'date': debit_note_date or cls.test_date,
+            'reason': 'no reason',
+            'copy_lines': True,
+        })
+        move_debit_note_wiz.create_debit()
+
+        return cls._set_vals_and_post(move=inv.debit_note_ids[0], ref=ref, line_vals=line_vals)
