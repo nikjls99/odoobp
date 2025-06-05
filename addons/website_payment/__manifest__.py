@@ -22,6 +22,8 @@ This is a bridge module that adds multi-website support for payment providers.
         'views/snippets/s_donation.xml',
     ],
     'auto_install': True,
+    'post_init_hook': "post_init_hook",
+    'uninstall_hook': "uninstall_hook",
     'assets': {
         'website.assets_wysiwyg': [
             'website_payment/static/src/snippets/s_donation/options.js',

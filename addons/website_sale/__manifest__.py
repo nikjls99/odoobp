@@ -75,8 +75,8 @@
     ],
     'installable': True,
     'application': True,
-    'post_init_hook': '_post_init_hook',
-    'uninstall_hook': 'uninstall_hook',
+    'post_init_hook': "post_init_hook",
+    'uninstall_hook': "uninstall_hook",
     'assets': {
         'web.assets_frontend': [
             'website_sale/static/src/interactions/**/*',

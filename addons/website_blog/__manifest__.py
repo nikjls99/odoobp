@@ -31,6 +31,8 @@
         'data/website_blog_demo.xml'
     ],
     'installable': True,
+    'post_init_hook': "post_init_hook",
+    'uninstall_hook': "uninstall_hook",
     'assets': {
         'web.assets_backend': [
             'website_blog/static/src/tours/website_blog.js',
