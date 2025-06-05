@@ -60,8 +60,20 @@ window.addEventListener("beforeunload", () => {
 
 export const errorService = {
     start(env) {
+<<<<<<< edfa37271a0015a0d4acb17e6985a87e707e5f33
         isUnloadingPage = false; // reset the flag for qunit memory leak
+||||||| 7bab598a97ea006e223093b9b558d58691fc8150
+        let isUnloadingPage = false;
+        window.addEventListener("beforeunload", () => {
+            isUnloadingPage = true;
+            // restore after 30 seconds
+            setTimeout(() => (isUnloadingPage = false), 30000);
+        });
+
+=======
+>>>>>>> d43f4c926e30ac437fd65df5d2ccf449581017e7
         function handleError(uncaughtError, retry = true) {
+<<<<<<< edfa37271a0015a0d4acb17e6985a87e707e5f33
             if (isUnloadingPage) {
                 uncaughtError.event.preventDefault();
                 return;
@@ -77,6 +89,13 @@ export const errorService = {
                     uncaughtError.traceback
                 );
             }
+||||||| 7bab598a97ea006e223093b9b558d58691fc8150
+            if (isUnloadingPage) {
+                uncaughtError.event.preventDefault();
+                return;
+            }
+=======
+>>>>>>> d43f4c926e30ac437fd65df5d2ccf449581017e7
             let originalError = uncaughtError;
             while (originalError instanceof Error && "cause" in originalError) {
                 originalError = originalError.cause;

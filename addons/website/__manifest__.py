@@ -131,7 +131,12 @@
     'assets': {
         'web.assets_frontend': [
             ('replace', 'web/static/src/legacy/js/public/public_root_instance.js', 'website/static/src/js/content/website_root_instance.js'),
+<<<<<<< edfa37271a0015a0d4acb17e6985a87e707e5f33
             'website/static/src/libs/zoomodoo/zoomodoo.scss',
+||||||| 7bab598a97ea006e223093b9b558d58691fc8150
+=======
+            'website/static/src/core/errors/beforeunload_error_handler.js',
+>>>>>>> d43f4c926e30ac437fd65df5d2ccf449581017e7
             'website/static/src/scss/website.scss',
             'website/static/src/scss/website_controller_page.scss',
             'website/static/src/scss/website.ui.scss',
