@@ -144,3 +144,102 @@ class ProductCatalogMixin(models.AbstractModel):
         :rtype: float
         """
         return 0
+
+    def _create_order_section(self, section_name, **kwargs):
+        """ Create a new section.
+
+        :param str section_name: The name of the section to create.
+        :param dict kwargs: additional values given for inherited models.
+        :return: A dictionary with newly created section information.
+        :rtype: dict
+        """
+        return {}
+
+    def _get_order_sections(self, *, child_field=False, **kwargs):
+        """ Returns the sections to be shown in the product catalog.
+
+        :param dict kwargs: additional values given for inherited models.
+        :return: A list of dictionaries containing 'id', 'name', 'sequence' and 'line_count' for
+                 each section.
+        :rtype: list
+        """
+        if not child_field:
+            return []
+        sections = [
+            {
+                'id': sec.id,
+                'name': sec.name,
+                'sequence': sec.sequence,
+                'line_count': len(self[child_field].filtered(
+                    lambda line: (
+                        line.linked_section_line_id == sec
+                        and not line.display_type
+                        and line.product_id.product_tmpl_id.type != 'combo'
+                    )
+                )),
+            }
+            for sec in self[child_field].filtered(
+                lambda line: line.display_type == 'line_section'
+            )
+        ]
+
+        no_section_lines_count = 0
+        for line in self[child_field]:
+            if line.display_type == 'line_section':
+                break
+            if not line.display_type and line.product_id.product_tmpl_id.type != 'combo':
+                no_section_lines_count += 1
+
+        sections.append({
+            'id': None,
+            'name': self.env._('No Section'),
+            'sequence': 0,
+            'line_count': no_section_lines_count,
+        })
+        return sorted(sections, key=lambda x: x['sequence'])
+
+    def _resequence_order_sections(self, sections, *, child_field=False, **kwargs):
+        """ Resequence the sections of the order based on the provided move and target sections.
+        The sections are reordered by updating their sequence numbers.
+
+        :param list sections: A list of dictionaries containing move and target sections.
+        :param dict kwargs: additional values given for inherited models.
+        :return: A dictonary containing the new sequences of all the sections of order.
+        :rtype: dict
+        """
+        if not child_field:
+            return {}
+        lines = self[child_field].sorted('sequence')
+        move_section, target_section = sections
+
+        move_block = lines.filtered(
+            lambda line: line.id == move_section['id']
+            or line.linked_section_line_id.id == move_section['id']
+        )
+
+        target_block = lines.filtered(
+            lambda line: line.id == target_section['id']
+            or line.linked_section_line_id.id == target_section['id']
+        )
+
+        remaining_lines = lines - move_block
+        insert_after = move_section['sequence'] < target_section['sequence']
+        insert_index = len(remaining_lines)
+        for idx, line in enumerate(remaining_lines):
+            if line.id == (target_block[-1].id if insert_after else target_section['id']):
+                insert_index = idx + 1 if insert_after else idx
+                break
+
+        reordered_lines = (
+            remaining_lines[:insert_index] +
+            move_block +
+            remaining_lines[insert_index:]
+        )
+
+        sections = {}
+        for sequence, line in enumerate(reordered_lines, start=1):
+            line.sequence = sequence
+            if line.display_type == 'line_section':
+                sections[line.id] = sequence
+
+        return sections

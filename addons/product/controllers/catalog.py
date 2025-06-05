@@ -46,3 +46,49 @@ class ProductCatalogController(Controller):
         return order.with_company(order.company_id)._update_order_line_info(
             product_id, quantity, **kwargs,
         )
+
+    @route('/product/catalog/get_sections', auth='user', type='jsonrpc', readonly=True)
+    def product_catalog_order_get_sections(self, res_model, order_id, **kwargs):
+        """ Returns the sections which are in given order to be shown in the product catalog.
+
+        :param string res_model: The order model.
+        :param int order_id: The order id.
+        :rtype: list
+        :return: A list of dictionaries containing section information with following structure:
+            [
+                {
+                    'id': int,
+                    'name': string,
+                    'sequence': int,
+                    'line_count': int,
+                },
+            ]
+        """
+        order = request.env[res_model].browse(order_id)
+        return order.with_company(order.company_id)._get_order_sections(**kwargs)
+
+    @route('/product/catalog/create_section', auth='user', type='jsonrpc')
+    def product_catalog_order_create_section(self, res_model, order_id, section_name, **kwargs):
+        """ Create a new section on the given order.
+
+        :param string res_model: The order model.
+        :param int order_id: The order id.
+        :param string section_name: The name of the section to create.
+        :return: A dictionary with newly created section information.
+        :rtype: dict
+        """
+        order = request.env[res_model].browse(order_id)
+        return order.with_company(order.company_id)._create_order_section(section_name, **kwargs)
+
+    @route('/product/catalog/resequence_sections', auth='user', type='jsonrpc')
+    def product_catalog_order_resequence_sections(self, res_model, order_id, sections, **kwargs):
+        """ Reorder the sections of a given order.
+
+        param string res_model: The order model.
+        :param int order_id: The order id.
+        :param list sections:  A list of section dictionaries with their sequence.
+        :return: A dictionary with new sequences of the sections.
+        :rtype: dict
+        """
+        order = request.env[res_model].browse(order_id)
+        return order.with_company(order.company_id)._resequence_order_sections(sections, **kwargs)

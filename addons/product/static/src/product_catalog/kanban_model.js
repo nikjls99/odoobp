@@ -41,6 +41,7 @@ export class ProductCatalogKanbanModel extends RelationalModel {
             product_ids: productIds,
             res_model: params.context.product_catalog_order_model,
             child_field: params.context?.child_field,
+            selected_section_id: this.env.searchModel.selectedSection.sectionId,
         }
     }
 

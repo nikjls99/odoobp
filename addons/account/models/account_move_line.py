@@ -362,6 +362,11 @@ class AccountMoveLine(models.Model):
         help="This field is used for payable and receivable journal entries. "
              "You can put the limit date for the payment of this line.",
     )
+    linked_section_line_id = fields.Many2one(
+        'account.move.line',
+        string="Linked Section Line",
+        compute='_compute_linked_section_line_id',
+    )
 
     # === Price fields === #
     price_unit = fields.Float(
@@ -1098,6 +1103,19 @@ class AccountMoveLine(models.Model):
                 line.matched_credit_ids.exchange_move_id.line_ids
             )
             line.reconciled_lines_excluding_exchange_diff_ids = all_lines - excluded_ids
+
+    def _compute_linked_section_line_id(self):
+        for line in self:
+            if line.display_type != 'line_section':
+                qualified_lines = line.move_id.line_ids.filtered(
+                    lambda l: l.display_type == 'line_section' and l.sequence < line.sequence,
+                )
+                if qualified_lines:
+                    line.linked_section_line_id = max(qualified_lines, key=lambda l: l.sequence)
+                else:
+                    line.linked_section_line_id = False
+            else:
+                line.linked_section_line_id = False
 
     def _search_payment_date(self, operator, value):
         if operator == 'in':
@@ -3208,7 +3226,7 @@ class AccountMoveLine(models.Model):
     def action_add_from_catalog(self):
         """ Will open the catalog view """
         move = self.env['account.move'].browse(self.env.context.get('order_id'))
-        return move.action_add_from_catalog()
+        return move.with_context(child_field='line_ids').action_add_from_catalog()
 
     # -------------------------------------------------------------------------
     # Catalog

@@ -2582,14 +2582,20 @@ class AccountMove(models.Model):
                 )
         return product_infos
 
-    def _get_product_catalog_record_lines(self, product_ids, **kwargs):
+    def _get_product_catalog_record_lines(self, product_ids, *, selected_section_id=None, **kwargs):
         grouped_lines = defaultdict(lambda: self.env['account.move.line'])
-        for line in self.line_ids:
+        lines = self.line_ids.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        )
+        for line in lines:
             if line.display_type == 'product' and line.product_id.id in product_ids:
                 grouped_lines[line.product_id] |= line
         return grouped_lines
 
-    def _update_order_line_info(self, product_id, quantity, **kwargs):
+    def _update_order_line_info(self, product_id, quantity, *, selected_section_id=None, **kwargs):
         """ Update account_move_line information for a given product or create a
         new one if none exists yet.
         :param int product_id: The product, as a `product.product` id.
@@ -2598,7 +2604,15 @@ class AccountMove(models.Model):
                  sale order and the quantity selected.
         :rtype: float
         """
-        move_line = self.line_ids.filtered(lambda line: line.product_id.id == product_id)
+        move_line = self.line_ids.filtered(
+            lambda line: (
+                line.product_id.id == product_id
+                and (
+                    line.linked_section_line_id.id == selected_section_id
+                    if selected_section_id else not line.linked_section_line_id
+                )
+            )
+        )
         if move_line:
             if quantity != 0:
                 move_line.quantity = quantity
@@ -2612,10 +2626,28 @@ class AccountMove(models.Model):
             else:
                 move_line.quantity = 0
         elif quantity > 0:
+            section_lines = self.line_ids.filtered(
+                lambda line: line.display_type == 'line_section'
+            ).sorted('sequence')
+
+            if selected_section_id:
+                sequence = self.line_ids.filtered(
+                    lambda l: l.id == selected_section_id
+                ).sequence + 1
+            elif section_lines:
+                sequence = section_lines[0].sequence
+            else:
+                # put it at the end of the order
+                sequence = (self.line_ids and self.line_ids[-1].sequence + 1) or 10
+
+            for line in self.line_ids.filtered(lambda line: line.sequence >= sequence):
+                line.sequence += 1
+
             move_line = self.env['account.move.line'].create({
                 'move_id': self.id,
                 'quantity': quantity,
                 'product_id': product_id,
+                'sequence': sequence,
             })
         return move_line.price_unit
 
@@ -2625,6 +2657,40 @@ class AccountMove(models.Model):
         """
         self.ensure_one()
         return self.state == 'cancel'
+
+    def _create_order_section(self, name, **kwargs):
+        """ Create and return a new section line for the current move.
+
+        :param str name: The name of the section.
+        :return: A dictionary having information of newly created section.
+        :rtype: dict
+        """
+        section = self.env['account.move.line'].create({
+            'move_id': self.id,
+            'name': name,
+            'display_type': 'line_section',
+            'sequence': ((self.line_ids and self.line_ids[-1].sequence + 1) or 10),
+        })
+        return {
+            'id': section.id,
+            'name': section.name,
+            'sequence': section.sequence,
+        }
+
+    def _get_order_sections(self, *, child_field=False, **kwargs):
+        sections = super()._get_order_sections(child_field=child_field, **kwargs)
+        if not child_field:
+            return sections
+
+        for section in sections:
+            section['line_count'] = len(self[child_field].filtered(
+                lambda line: (
+                    line.linked_section_line_id.id == section['id']
+                    and line.display_type == 'product'
+                    and line.product_id.product_tmpl_id.type != 'combo'
+                )
+            ))
+        return sections
 
     # -------------------------------------------------------------------------
     # EARLY PAYMENT DISCOUNT

@@ -17,6 +17,10 @@ class ProductProduct(models.Model):
         compute='_compute_product_is_in_sale_order',
         search='_search_product_is_in_sale_order',
     )
+    is_in_selected_section_of_sale_order = fields.Boolean(
+        compute='_compute_is_in_selected_section_of_sale_order',
+        search='_search_is_in_selected_section_of_sale_order',
+    )
 
     def _compute_sales_count(self):
         r = {}
@@ -65,12 +69,44 @@ class ProductProduct(models.Model):
         for product in self:
             product.product_catalog_product_is_in_sale_order = bool(data.get(product.id, 0))
 
+    @api.depends_context('order_id', 'selected_section_id')
+    def _compute_is_in_selected_section_of_sale_order(self):
+        order_id = self.env.context.get('order_id')
+        selected_section_id = self.env.context.get('selected_section_id')
+
+        if not order_id:
+            self.is_in_selected_section_of_sale_order = False
+            return
+
+        sale_order = self.env['sale.order'].browse(order_id)
+        product_ids = sale_order.order_line.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        ).mapped('product_id').ids
+        for product in self:
+            product.is_in_selected_section_of_sale_order = product.id in product_ids
+
     def _search_product_is_in_sale_order(self, operator, value):
         if operator != 'in':
             return NotImplemented
         product_ids = self.env['sale.order.line'].search_fetch([
             ('order_id', 'in', [self.env.context.get('order_id', '')]),
         ], ['product_id']).product_id.ids
+        return [('id', 'in', product_ids)]
+
+    def _search_is_in_selected_section_of_sale_order(self, operator, value):
+        if operator != 'in':
+            return NotImplemented
+        sale_order = self.env['sale.order'].browse(self.env.context.get('order_id'))
+        selected_section_id = self.env.context.get('selected_section_id')
+        product_ids = sale_order.order_line.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        ).mapped('product_id').ids
         return [('id', 'in', product_ids)]
 
     @api.readonly

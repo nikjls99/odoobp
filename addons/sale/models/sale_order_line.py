@@ -305,6 +305,11 @@ class SaleOrderLine(models.Model):
         string='Tax calculation rounding method', readonly=True)
     company_price_include = fields.Selection(related="company_id.account_price_include")
     sale_line_warn_msg = fields.Text(related='product_id.sale_line_warn_msg')
+    linked_section_line_id = fields.Many2one(
+        'sale.order.line',
+        string="Linked Section Line",
+        compute='_compute_linked_section_line_id',
+    )
 
     #=== COMPUTE METHODS ===#
 
@@ -1116,6 +1121,19 @@ class SaleOrderLine(models.Model):
         for line in self:
             # line.ids checks whether it's a new record not yet saved
             line.product_uom_readonly = line.ids and line.state in ['sale', 'cancel']
+
+    def _compute_linked_section_line_id(self):
+        for line in self:
+            if line.display_type != 'line_section':
+                qualified_lines = line.order_id.order_line.filtered(
+                    lambda l: l.display_type == 'line_section' and l.sequence < line.sequence,
+                )
+                if qualified_lines:
+                    line.linked_section_line_id = max(qualified_lines, key=lambda l: l.sequence)
+                else:
+                    line.linked_section_line_id = False
+            else:
+                line.linked_section_line_id = False
 
     #=== CONSTRAINT METHODS ===#
 

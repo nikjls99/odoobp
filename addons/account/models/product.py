@@ -188,6 +188,11 @@ class ProductProduct(models.Model):
 
     tax_string = fields.Char(compute='_compute_tax_string')
 
+    is_in_selected_section_of_move = fields.Boolean(
+        compute='_compute_is_in_selected_section_of_move',
+        search='_search_is_in_selected_section_of_move',
+    )
+
     def _get_product_accounts(self):
         return self.product_tmpl_id._get_product_accounts()
 
@@ -268,6 +273,38 @@ class ProductProduct(models.Model):
     def _compute_tax_string(self):
         for record in self:
             record.tax_string = record.product_tmpl_id._construct_tax_string(record.lst_price)
+
+    @api.depends_context('order_id', 'selected_section_id')
+    def _compute_is_in_selected_section_of_move(self):
+        move_id = self.env.context.get('order_id')
+        selected_section_id = self.env.context.get('selected_section_id')
+
+        if not move_id:
+            self.is_in_selected_section_of_move = False
+            return
+
+        move = self.env['account.move'].browse(move_id)
+        product_ids = move.line_ids.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        ).mapped('product_id').ids
+        for product in self:
+            product.is_in_selected_section_of_move = product.id in product_ids
+
+    def _search_is_in_selected_section_of_move(self, operator, value):
+        if operator != 'in':
+            return NotImplemented
+        move = self.env['account.move'].browse(self.env.context.get('order_id'))
+        selected_section_id = self.env.context.get('selected_section_id')
+        product_ids = move.line_ids.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        ).mapped('product_id').ids
+        return [('id', 'in', product_ids)]
 
     # -------------------------------------------------------------------------
     # EDI

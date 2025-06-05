@@ -1055,9 +1055,15 @@ class PurchaseOrder(models.Model):
             res[product.id] |= self._get_product_price_and_data(product)
         return res
 
-    def _get_product_catalog_record_lines(self, product_ids, **kwargs):
+    def _get_product_catalog_record_lines(self, product_ids, *, selected_section_id=None, **kwargs):
         grouped_lines = defaultdict(lambda: self.env['purchase.order.line'])
-        for line in self.order_line:
+        lines = self.order_line.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        )
+        for line in lines:
             if line.display_type or line.product_id.id not in product_ids:
                 continue
             grouped_lines[line.product_id] |= line
@@ -1155,7 +1161,7 @@ class PurchaseOrder(models.Model):
         for line, date in updated_dates:
             line._update_date_planned(date)
 
-    def _update_order_line_info(self, product_id, quantity, **kwargs):
+    def _update_order_line_info(self, product_id, quantity, *, selected_section_id=None, **kwargs):
         """ Update purchase order line information for a given product or create
         a new one if none exists yet.
         :param int product_id: The product, as a `product.product` id.
@@ -1164,7 +1170,15 @@ class PurchaseOrder(models.Model):
         :rtype: float
         """
         self.ensure_one()
-        pol = self.order_line.filtered(lambda line: line.product_id.id == product_id)
+        pol = self.order_line.filtered(
+            lambda line: (
+                line.product_id.id == product_id
+                and (
+                    line.linked_section_line_id.id == selected_section_id
+                    if selected_section_id else not line.linked_section_line_id
+                )
+            )
+        )
         if pol:
             if quantity != 0:
                 pol.product_qty = quantity
@@ -1175,11 +1189,28 @@ class PurchaseOrder(models.Model):
             else:
                 pol.product_qty = 0
         elif quantity > 0:
+            section_lines = self.order_line.filtered(
+                lambda line: line.display_type == 'line_section'
+            ).sorted('sequence')
+
+            if selected_section_id:
+                sequence = self.order_line.filtered(
+                    lambda l: l.id == selected_section_id
+                ).sequence + 1
+            elif section_lines:
+                sequence = section_lines[0].sequence
+            else:
+                # put it at the end of the order
+                sequence = (self.order_line and self.order_line[-1].sequence + 1) or 10
+
+            for line in self.order_line.filtered(lambda line: line.sequence >= sequence):
+                line.sequence += 1
+
             pol = self.env['purchase.order.line'].create({
                 'order_id': self.id,
                 'product_id': product_id,
                 'product_qty': quantity,
-                'sequence': ((self.order_line and self.order_line[-1].sequence + 1) or 10),  # put it at the end of the order
+                'sequence': sequence,
             })
             seller = pol.product_id._select_seller(
                 partner_id=pol.partner_id,
@@ -1190,6 +1221,26 @@ class PurchaseOrder(models.Model):
                 # Fix the PO line's price on the seller's one.
                 pol.price_unit = seller.price_discounted
         return pol.price_unit_discounted
+
+    def _create_order_section(self, name, **kwargs):
+        """ Create and return a new section line for the current purchase order.
+
+        :param str name: The name of the section.
+        :return: A dictionary having information of newly created section.
+        :rtype: dict
+        """
+        section = self.env['purchase.order.line'].create({
+            'display_type': 'line_section',
+            'name': name,
+            'order_id': self.id,
+            'product_qty': 0,
+            'sequence': ((self.order_line and self.order_line[-1].sequence + 1) or 10),
+        })
+        return {
+            'id': section.id,
+            'name': section.name,
+            'sequence': section.sequence,
+        }
 
     def _create_update_date_activity(self, updated_dates):
         note = Markup('<p>%s</p>\n') % _('%s modified receipt dates for the following products:', self.partner_id.name)

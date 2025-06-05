@@ -2151,9 +2151,15 @@ class SaleOrder(models.Model):
                 res[product.id]['warning'] = product.sale_line_warn_msg
         return res
 
-    def _get_product_catalog_record_lines(self, product_ids, **kwargs):
+    def _get_product_catalog_record_lines(self, product_ids, *, selected_section_id=None, **kwargs):
         grouped_lines = defaultdict(lambda: self.env['sale.order.line'])
-        for line in self.order_line:
+        lines = self.order_line.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        )
+        for line in lines:
             if line.display_type or line.product_id.id not in product_ids:
                 continue
             grouped_lines[line.product_id] |= line
@@ -2175,7 +2181,7 @@ class SaleOrder(models.Model):
                 or (self.state == 'sale' and document.attached_on_sale == 'sale_order')
         )
 
-    def _update_order_line_info(self, product_id, quantity, **kwargs):
+    def _update_order_line_info(self, product_id, quantity, *, selected_section_id=None, **kwargs):
         """ Update sale order line information for a given product or create a
         new one if none exists yet.
         :param int product_id: The product, as a `product.product` id.
@@ -2184,7 +2190,15 @@ class SaleOrder(models.Model):
         :rtype: float
         """
         request.update_context(catalog_skip_tracking=True)
-        sol = self.order_line.filtered(lambda line: line.product_id.id == product_id)
+        sol = self.order_line.filtered(
+            lambda line: (
+                line.product_id.id == product_id
+                and (
+                    line.linked_section_line_id.id == selected_section_id
+                    if selected_section_id else not line.linked_section_line_id
+                )
+            )
+        )
         if sol:
             if quantity != 0:
                 sol.product_uom_qty = quantity
@@ -2201,13 +2215,49 @@ class SaleOrder(models.Model):
             else:
                 sol.product_uom_qty = 0
         elif quantity > 0:
+            section_lines = self.order_line.filtered(
+                lambda line: line.display_type == 'line_section'
+            ).sorted('sequence')
+
+            if selected_section_id:
+                sequence = self.order_line.filtered(
+                    lambda l: l.id == selected_section_id
+                ).sequence + 1
+            elif section_lines:
+                sequence = section_lines[0].sequence
+            else:
+                # put it at the end of the order
+                sequence = (self.order_line and self.order_line[-1].sequence + 1) or 10
+
+            for line in self.order_line.filtered(lambda line: line.sequence >= sequence):
+                line.sequence += 1
+
             sol = self.env['sale.order.line'].create({
                 'order_id': self.id,
                 'product_id': product_id,
                 'product_uom_qty': quantity,
-                'sequence': ((self.order_line and self.order_line[-1].sequence + 1) or 10),  # put it at the end of the order
+                'sequence': sequence,
             })
         return sol.price_unit * (1-(sol.discount or 0.0)/100.0)
+
+    def _create_order_section(self, name, **kwargs):
+        """ Create and return a new section line for the current sale order.
+
+        :param str name: The name of the section.
+        :return: A dictionary having information of newly created section.
+        :rtype: dict
+        """
+        section = self.env['sale.order.line'].create({
+            'order_id': self.id,
+            'name': name,
+            'display_type': 'line_section',
+            'sequence': ((self.order_line and self.order_line[-1].sequence + 1) or 10),
+        })
+        return {
+            'id': section.id,
+            'name': section.name,
+            'sequence': section.sequence,
+        }
 
     #=== TOOLING ===#
 

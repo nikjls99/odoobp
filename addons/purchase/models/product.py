@@ -62,6 +62,10 @@ class ProductProduct(models.Model):
         compute='_compute_is_in_purchase_order',
         search='_search_is_in_purchase_order',
     )
+    is_in_selected_section_of_purchase_order = fields.Boolean(
+        compute='_compute_is_in_selected_section_of_purchase_order',
+        search='_search_is_in_selected_section_of_purchase_order',
+    )
 
     def _compute_purchased_product_qty(self):
         date_from = fields.Datetime.to_string(fields.Date.context_today(self) - relativedelta(years=1))
@@ -94,12 +98,44 @@ class ProductProduct(models.Model):
         for product in self:
             product.is_in_purchase_order = bool(data.get(product.id, 0))
 
+    @api.depends_context('order_id', 'selected_section_id')
+    def _compute_is_in_selected_section_of_purchase_order(self):
+        order_id = self.env.context.get('order_id')
+        selected_section_id = self.env.context.get('selected_section_id')
+
+        if not order_id:
+            self.is_in_selected_section_of_purchase_order = False
+            return
+
+        purchase_order = self.env['purchase.order'].browse(order_id)
+        product_ids = purchase_order.order_line.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        ).mapped('product_id').ids
+        for product in self:
+            product.is_in_selected_section_of_purchase_order = product.id in product_ids
+
     def _search_is_in_purchase_order(self, operator, value):
         if operator != 'in':
             return NotImplemented
         product_ids = self.env['purchase.order.line'].search([
             ('order_id', 'in', [self.env.context.get('order_id', '')]),
         ]).product_id.ids
+        return [('id', 'in', product_ids)]
+
+    def _search_is_in_selected_section_of_purchase_order(self, operator, value):
+        if operator != 'in':
+            return NotImplemented
+        purchase_order = self.env['purchase.order'].browse(self.env.context.get('order_id'))
+        selected_section_id = self.env.context.get('selected_section_id')
+        product_ids = purchase_order.order_line.filtered(
+            lambda line: (
+                line.linked_section_line_id.id == selected_section_id
+                if selected_section_id else not line.linked_section_line_id
+            )
+        ).mapped('product_id').ids
         return [('id', 'in', product_ids)]
 
     def action_view_po(self):
