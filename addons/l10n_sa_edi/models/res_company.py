@@ -34,7 +34,16 @@ class ResCompany(models.Model):
         for company in self:
             if 'l10n_sa_api_mode' in vals:
                 if company.l10n_sa_api_mode == 'prod' and vals['l10n_sa_api_mode'] != 'prod':
-                    raise UserError(_("You cannot change the ZATCA Submission Mode once it has been set to Production"))
+                    # Prevent API mode change from 'Production' if any invoice was submitted to ZATCA in Production mode.
+                    submitted_production_invoice = self.env['account.move'].search_count([
+                        ('company_id', '=', company.id),
+                        ('move_type', 'in', ['out_invoice', 'out_refund']),
+                        ('l10n_sa_is_prod_invoice', '=', True),
+                        ('edi_document_ids.edi_format_id.code', '=', 'sa_zatca'),
+                        ('edi_state', '=', 'sent'),
+                    ], limit=1)
+                    if submitted_production_invoice:
+                        raise UserError(_("ZATCA API Mode cannot be changed after an invoice has been successfully submitted under the Production Mode."))
                 journals = self.env['account.journal'].search(self.env['account.journal']._check_company_domain(company))
                 journals._l10n_sa_reset_certificates()
                 journals.l10n_sa_latest_submission_hash = False

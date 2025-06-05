@@ -20,6 +20,8 @@ class AccountMove(models.Model):
         help="Invoice index in chain, set if and only if an in-chain XML was submitted and did not error",
     )
 
+    l10n_sa_is_prod_invoice = fields.Boolean("Is Production Invoice", copy=False)
+
     def _l10n_sa_is_simplified(self):
         """
             Returns True if the customer is an individual, i.e: The invoice is B2C
@@ -173,7 +175,7 @@ class AccountMove(models.Model):
         self.ensure_one()
         self.journal_id.l10n_sa_latest_submission_hash = self.env['account.edi.xml.ubl_21.zatca']._l10n_sa_generate_invoice_xml_hash(
             xml_content)
-        bootstrap_cls, title, content = ("success", _("Invoice Successfully Submitted to ZATCA"),
+        bootstrap_cls, title, content = ("success", _("Success: Invoice accepted by ZATCA"),
                                          "" if (not error or not response_data) else response_data)
         attachment = False
         if error:
@@ -188,34 +190,34 @@ class AccountMove(models.Model):
                 'type': 'binary',
                 'mimetype': 'application/xml',
             })
-            bootstrap_cls, title = ("danger", _("Invoice was rejected by ZATCA"))
+            bootstrap_cls, title = ("danger", _("Error: Invoice rejected by ZATCA"))
             error_msg = response_data['error']
             content = Markup("""
-                <p class='mb-0'>
+                <p class='mb-0 mt-1'>
                     %s
                 </p>
                 <hr>
                 <p class='mb-0'>
                     %s
                 </p>
-            """) % (_('The invoice was rejected by ZATCA. Please, check the response below:'), error_msg)
+            """) % (_('Please check the details below and retry after addressing them.'), error_msg)
         if response_data and response_data.get('validationResults', {}).get('warningMessages'):
             status_code = response_data.get('status_code')
-            bootstrap_cls, title = ("warning", _("Invoice was Accepted by ZATCA (with Warnings)"))
+            bootstrap_cls, title = ("warning", _("Warning: Invoice accepted by ZATCA with warnings"))
             content = Markup("""
-                <p class='mb-0'>
+                <p class='mb-0 mt-1'>
                     %s
                 </p>
                 <hr>
                 <p class='mb-0'>
                     <b>%s</b>%s
                 </p>
-            """) % (_('The invoice was accepted by ZATCA, but returned warnings. Please, check the response below:'),
+            """) % (_('Please check the details below:'),
                     f"[{status_code}] " if status_code else "",
                     Markup("<br/>").join([Markup("<b>%s</b> : %s") % (m['code'], m['message']) for m in response_data['validationResults']['warningMessages']]))
         self.with_context(no_new_invoice=True).message_post(body=Markup("""
                 <div role='alert' class='alert alert-%s'>
-                    <h4 class='alert-heading'>%s</h4>%s
+                    <h4 class='alert-heading my-0'>%s</h4>%s
                 </div>
             """) % (bootstrap_cls, title, content),
             attachment_ids=attachment and [attachment.id] or []
@@ -263,6 +265,20 @@ class AccountMove(models.Model):
             'total_amount': invoice_vals['vals']['monetary_total_vals']['tax_inclusive_amount'],
             'total_tax': invoice_vals['vals']['tax_total_vals'][-1]['tax_amount'],
         }
+
+    def action_post(self):
+        # EXTEND account
+        # Override to set l10n_sa_is_prod_invoice field which indicates whether the invoice was posted in production mode or not.
+        # Used to prevent changing API mode from production if any production invoices exist.
+        moves = self.filtered(
+            lambda m: m.country_code == 'SA'
+            and m.move_type in ('out_invoice', 'out_refund')
+            and m.state == 'posted'
+            and not m.l10n_sa_is_prod_invoice
+        )
+        for move in moves:
+            move.l10n_sa_is_prod_invoice = move.company_id.l10n_sa_api_mode == 'prod'
+        return super().action_post()
 
 
 class AccountMoveLine(models.Model):

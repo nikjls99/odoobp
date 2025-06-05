@@ -227,9 +227,9 @@ class AccountEdiFormat(models.Model):
         # Load PCISD data and certificate
         try:
             PCSID_data, certificate = invoice.journal_id._l10n_sa_api_get_pcsid()
-        except UserError as e:
+        except UserError:
             return ({
-                'error': _("Could not generate PCSID values:\n%(error)s", error=e.args[0]),
+                'error': _("Something went wrong. Please onboard the journal again."),
                 'blocking_level': 'error',
                 'response': unsigned_xml
             }, unsigned_xml)
@@ -239,9 +239,9 @@ class AccountEdiFormat(models.Model):
         # Apply Signature/QR code on the generated XML document
         try:
             signed_xml = self._l10n_sa_get_signed_xml(invoice, unsigned_xml, certificate_sudo)
-        except UserError as e:
+        except UserError:
             return ({
-                'error': _("Could not generate signed XML values:\n%(error)s", error=e.args[0]),
+                'error': _("Something went wrong. Please onboard the journal again."),
                 'blocking_level': 'error',
                 'response': unsigned_xml
             }, unsigned_xml)
@@ -266,15 +266,9 @@ class AccountEdiFormat(models.Model):
         """
         partner_id = invoice.company_id.partner_id.commercial_partner_id
         fields_to_check = [
-            ('l10n_sa_edi_building_number', _('Building Number for the Buyer is required on Standard Invoices')),
-            ('street2', _('Neighborhood for the Seller is required on Standard Invoices')),
             ('l10n_sa_edi_additional_identification_scheme',
              _('Additional Identification Scheme is required for the Seller, and must be one of CRN, MOM, MLS, SAG or OTH'),
              lambda p, v: v in ('CRN', 'MOM', 'MLS', 'SAG', 'OTH')
-             ),
-            ('vat',
-             _('VAT is required when Identification Scheme is set to Tax Identification Number'),
-             lambda p, v: p.l10n_sa_edi_additional_identification_scheme != 'TIN'
              ),
             ('state_id', _('State / Country subdivision'))
         ]
@@ -300,12 +294,6 @@ class AccountEdiFormat(models.Model):
         elif invoice.commercial_partner_id.l10n_sa_edi_additional_identification_scheme == 'TIN':
             fields_to_check += [
                 ('vat', _('VAT is required when Identification Scheme is set to Tax Identification Number'))
-            ]
-        if not invoice._l10n_sa_is_simplified() and invoice.partner_id.country_id.code == 'SA':
-            # If the invoice is a non-foreign, Standard (B2B), the Building Number and Neighborhood are required
-            fields_to_check += [
-                ('l10n_sa_edi_building_number', _('Building Number for the Buyer is required on Standard Invoices')),
-                ('street2', _('Neighborhood for the Buyer is required on Standard Invoices')),
             ]
         return self._l10n_sa_check_partner_missing_info(invoice.commercial_partner_id, fields_to_check)
 
@@ -405,24 +393,18 @@ class AccountEdiFormat(models.Model):
             return errors
 
         if invoice.commercial_partner_id == invoice.company_id.partner_id.commercial_partner_id:
-            errors.append(_("- You cannot post invoices where the Seller is the Buyer"))
+            errors.append(_("- Invoice cannot be posted as the Supplier and Buyer are the same."))
 
         if not all(line.tax_ids for line in invoice.invoice_line_ids.filtered(lambda line: line.display_type == 'product' and line._check_edi_line_tax_required())):
-            errors.append(_("- Invoice lines should have at least one Tax applied."))
+            errors.append(_("- Invoice lines need at least one tax. Please input it and try again."))
 
         if not journal._l10n_sa_ready_to_submit_einvoices():
-            errors.append(
-                _("- Finish the Onboarding procees for journal %s by requesting the CSIDs and completing the checks.", journal.name))
+            errors.append(_("- The Journal (%s) is not onboarded yet. Please onboard it and try again.", journal.name))
 
         if not company._l10n_sa_check_organization_unit():
-            errors.append(
-                _("- The company VAT identification must contain 15 digits, with the first and last digits being '3' as per the BR-KSA-39 and BR-KSA-40 of ZATCA KSA business rule."))
+            errors.append(_("- Company VAT Number is missing. Please go to the Company Settings and input it."))
         if not company.sudo().l10n_sa_private_key_id:
-            errors.append(
-                _("- No Private Key was generated for company %s. A Private Key is mandatory in order to generate Certificate Signing Requests (CSR).", company.name))
-        if not journal.l10n_sa_serial_number:
-            errors.append(
-                _("- No Serial Number was assigned for journal %s. A Serial Number is mandatory in order to generate Certificate Signing Requests (CSR).", journal.name))
+            errors.append(_("- Something went wrong. Please onboard the journal again."))
 
         supplier_missing_info = self._l10n_sa_check_seller_missing_info(invoice)
         customer_missing_info = self._l10n_sa_check_buyer_missing_info(invoice)
@@ -442,7 +424,7 @@ class AccountEdiFormat(models.Model):
                 )
             )
         if invoice.invoice_date > fields.Date.context_today(self.with_context(tz='Asia/Riyadh')):
-            errors.append(_("- Please, make sure the invoice date is set to either the same as or before Today."))
+            errors.append(_("- Please set the Invoice Date to be either less than or equal to today."))
         if invoice.move_type in ('in_refund', 'out_refund') and not invoice._l10n_sa_check_refund_reason():
             errors.append(
                 _("- Please, make sure either the Reversed Entry or the Reversal Reason are specified when confirming a Credit/Debit note"))
