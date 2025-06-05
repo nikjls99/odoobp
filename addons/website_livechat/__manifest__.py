@@ -24,6 +24,7 @@
     'assets': {
         "im_livechat.assets_embed_core": [
             "website/static/src/**/common/**/*",
+            "website_livechat/static/src/embed/**/*",
         ],
         "mail.assets_public": [
             "website_livechat/static/src/**/common/**/*",
@@ -41,6 +42,7 @@
             "website_livechat/static/src/**/common/**/*",
             'website_livechat/static/src/**/*',
             ('remove', 'website_livechat/static/src/scss/**/*'),
+            ("remove", "website_livechat/static/src/embed/**/*"),
         ],
         'web.assets_unit_tests': [
             'website_livechat/static/tests/**/*',

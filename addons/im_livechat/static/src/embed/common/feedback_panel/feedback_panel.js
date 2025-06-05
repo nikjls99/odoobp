@@ -44,6 +44,10 @@ export class FeedbackPanel extends Component {
         this.state.rating = rating;
     }
 
+    get allowNewSession() {
+        return this.store.livechat_rule?.action !== "hide_button";
+    }
+
     onClickSendFeedback() {
         rpc("/im_livechat/feedback", {
             reason: this.state.feedback,
