@@ -289,15 +289,16 @@ class ProductProduct(models.Model):
         picking type passed as argument.
         """
         self.ensure_one()
-        picking_code = picking_type_id.code
-        description = html2plaintext(self.description) if not is_html_empty(self.description) else self.name
-        if picking_code == 'incoming':
-            return self.description_pickingin or description
-        if picking_code == 'outgoing':
-            return self.description_pickingout or self.name
-        if picking_code == 'internal':
-            return self.description_picking or description
-        return description
+        if picking_type_id.code == 'outgoing':
+            return self.name
+        return html2plaintext(self.description) if not is_html_empty(self.description) else self.name
+
+    def _get_picking_description(self, picking_type_id):
+        return {
+            'incoming': self.description_pickingin,
+            'outgoing': self.description_pickingout,
+            'internal': self.description_picking
+        }.get(picking_type_id.code, '')
 
     def _get_domain_locations(self):
         '''

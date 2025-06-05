@@ -696,7 +696,6 @@ class StockQuant(TransactionCase):
         self.env['stock.quant']._update_available_quantity(self.product, self.stock_location, 1.0)
 
         move = self.env['stock.move'].create({
-            'name': 'OUT 1 product',
             'product_id': self.product.id,
             'product_uom_qty': 1,
             'product_uom': self.product.uom_id.id,
@@ -712,7 +711,6 @@ class StockQuant(TransactionCase):
         tomorrow = fields.Datetime.now() + timedelta(days=1)
         with patch.object(fields.Datetime, 'now', lambda: tomorrow):
             move = self.env['stock.move'].create({
-                'name': 'IN 1 product',
                 'product_id': self.product.id,
                 'product_uom_qty': 1,
                 'product_uom': self.product.uom_id.id,
@@ -735,7 +733,6 @@ class StockQuant(TransactionCase):
         self.env['stock.quant']._update_available_quantity(self.product, self.stock_location, 10.0)
 
         move = self.env['stock.move'].create({
-            'name': 'Move 1 product',
             'product_id': self.product.id,
             'product_uom_qty': 1,
             'product_uom': self.product.uom_id.id,
@@ -768,7 +765,6 @@ class StockQuant(TransactionCase):
             'location_id': supplier_location.id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
-                'name': 'In 10 x %s' % self.product.name,
                 'product_id': self.product.id,
                 'location_id': supplier_location.id,
                 'location_dest_id': stock_location.id,
@@ -835,7 +831,6 @@ class StockQuant(TransactionCase):
             'location_id': supplier_location.id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
-                'name': self.product_serial.name,
                 'product_id': self.product_serial.id,
                 'location_id': supplier_location.id,
                 'location_dest_id': stock_location.id,
@@ -871,7 +866,6 @@ class StockQuant(TransactionCase):
             'location_id': supplier_location.id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
-                'name': self.product_serial.name,
                 'product_id': self.product_serial.id,
                 'location_id': supplier_location.id,
                 'location_dest_id': stock_location.id,
@@ -1276,7 +1270,6 @@ class StockQuant(TransactionCase):
             'location_id': dst_location.id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
-                'name': 'In 5 x %s' % product.name,
                 'product_id': product.id,
                 'location_id': stock_location.id,
                 'location_dest_id': dst_location.id,
@@ -1313,7 +1306,6 @@ class StockQuant(TransactionCase):
             'location_id': self.ref('stock.stock_location_suppliers'),
             'location_dest_id': self.stock_location.id,
             'move_ids': [Command.create({
-                'name': 'Lovely move',
                 'product_id': self.product.id,
                 'location_id': self.ref('stock.stock_location_suppliers'),
                 'location_dest_id': self.stock_location.id,
@@ -1340,7 +1332,6 @@ class StockQuant(TransactionCase):
                 lot_id=lot,
             )
         move = self.env['stock.move'].create({
-            'name': 'test_reserve_small_qty',
             'location_id': self.stock_location.id,
             'location_dest_id': self.stock_subloc2.id,
             'product_id': self.product_serial.id,
@@ -1408,7 +1399,6 @@ class StockQuantRemovalStrategy(TransactionCase):
 
     def _generate_data(self, packages_data):
         move = self.env['stock.move'].create({
-            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.ref('stock.stock_location_suppliers'),
@@ -1459,7 +1449,6 @@ class StockQuantRemovalStrategy(TransactionCase):
 
         # Out 1000 should selecte a package with 1000 units inside
         move = self.env['stock.move'].create({
-            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.stock_location.id,
@@ -1488,7 +1477,6 @@ class StockQuantRemovalStrategy(TransactionCase):
 
         # Out 1000 should select a package with 1000 units inside
         move = self.env['stock.move'].create({
-            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.stock_location.id,
@@ -1519,7 +1507,6 @@ class StockQuantRemovalStrategy(TransactionCase):
         self._generate_data(packages_data)
 
         move = self.env['stock.move'].create({
-            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.stock_location.id,
@@ -1553,7 +1540,6 @@ class StockQuantRemovalStrategy(TransactionCase):
         self._generate_data(packages_data)
 
         move = self.env['stock.move'].create({
-            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.stock_location.id,
@@ -1579,7 +1565,6 @@ class StockQuantRemovalStrategy(TransactionCase):
         self.env['stock.quant']._update_available_quantity(self.product, self.stock_location, 1.0, package_id=package)
 
         move = self.env['stock.move'].create({
-            'name': 'OUT 1 product',
             'product_id': self.product.id,
             'product_uom_qty': 1,
             'product_uom': self.product.uom_id.id,

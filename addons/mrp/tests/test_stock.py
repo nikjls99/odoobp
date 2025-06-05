@@ -473,7 +473,6 @@ class TestKitPicking(common.TestMrpCommon):
             'picking_type_id': self.picking_type_in.id,
         })
         self.env['stock.move'].create({
-            'name': self.kit_parent.name,
             'product_id': self.kit_parent.id,
             'quantity': 3,
             'picked': True,
@@ -502,7 +501,6 @@ class TestKitPicking(common.TestMrpCommon):
             'picking_type_id': self.picking_type_in.id,
         })
         move_receipt_1 = self.env['stock.move'].create({
-            'name': self.kit_parent.name,
             'product_id': self.kit_parent.id,
             'product_uom_qty': 3,
             'product_uom': self.kit_parent.uom_id.id,
@@ -532,7 +530,6 @@ class TestKitPicking(common.TestMrpCommon):
             'location_id': self.customer_location.id,
             'location_dest_id': self.stock_location.id,
             'move_ids': [Command.create({
-                'name': product.name,
                 'product_id': product.id,
                 'product_uom_qty': 1,
                 'product_uom': product.uom_id.id,
@@ -691,7 +688,6 @@ class TestKitPicking(common.TestMrpCommon):
             'location_id': stock_location.id,
             'location_dest_id': self.customer_location.id,
             'move_ids': [Command.create({
-                'name': kit.name,
                 'product_id': kit.id,
                 'product_uom_qty': 12,
                 'product_uom': packaging.id,
