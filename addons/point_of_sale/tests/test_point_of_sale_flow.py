@@ -2324,3 +2324,61 @@ class TestPointOfSaleFlow(TestPointOfSaleCommon):
         self.PosOrder.sync_from_ui(refund_values)
         refunded_order_line = self.env['pos.order.line'].search([('product_id', '=', product.id), ('qty', '=', -2)])
         self.assertEqual(refunded_order_line.total_cost, -20)
+
+    def test_payment_difference_accounting_items(self):
+        """Verify that the amount of the accounting items are correct when closing a session with a payment difference."""
+        self.product1 = self.env['product.product'].create({
+            'name': 'Test Product',
+            'lst_price': 100,
+        })
+        self.bank_payment_method.outstanding_account_id = self.env['account.account'].create({
+            'name': 'Bank Account',
+            'code': 'BA',
+            'account_type': 'asset_receivable',
+            'reconcile': True,
+        })
+        # Make a sale paid by bank
+        self.pos_config.open_ui()
+        session_id = self.pos_config.current_session_id
+        order = self.env['pos.order'].create({
+            'company_id': self.env.company.id,
+            'session_id': session_id.id,
+            'partner_id': False,
+            'lines': [(0, 0, {
+                'name': 'OL/0001',
+                'product_id': self.product1.id,
+                'price_unit': 100.00,
+                'discount': 0,
+                'qty': 1,
+                'tax_ids': False,
+                'price_subtotal': 100.00,
+                'price_subtotal_incl': 100.00,
+            })],
+            'pricelist_id': self.pos_config.pricelist_id.id,
+            'amount_paid': 100.00,
+            'amount_total': 100.00,
+            'amount_tax': 0.0,
+            'amount_return': 0.0,
+            'to_invoice': False,
+        })
+
+        # Make payment
+        payment_context = {"active_ids": order.ids, "active_id": order.id}
+        order_payment = self.env['pos.make.payment'].with_context(**payment_context).create({
+            'amount': order.amount_total,
+            'payment_method_id': self.bank_payment_method.id
+        })
+        order_payment.with_context(**payment_context).check()
+
+        session_id.action_pos_session_closing_control(bank_payment_method_diffs={self.bank_payment_method.id: -10.00})
+        loss_account = self.bank_payment_method.journal_id.loss_account_id
+        bank_payment_lines = session_id._get_related_account_moves().filtered(lambda move: 'Combine Bank' in move.ref).line_ids
+        loss_line = bank_payment_lines.filtered(lambda line: line.account_id == loss_account)
+        self.assertEqual(len(loss_line), 1, "There should be one line for the payment difference")
+        self.assertEqual(loss_line.debit, 10.00, "The debit amount of the payment difference line should be 10.00")
+        receivable_line = bank_payment_lines.filtered(lambda line: line.account_id == self.bank_payment_method.receivable_account_id)
+        self.assertEqual(len(receivable_line), 1, "There should be one line for the receivable account")
+        self.assertEqual(receivable_line.credit, 100.00, "The credit amount of the receivable line should be 10.00")
+        outstanding_mine = bank_payment_lines.filtered(lambda line: line.account_id == self.bank_payment_method.outstanding_account_id)
+        self.assertEqual(len(outstanding_mine), 1, "There should be one line for the outstanding account")
+        self.assertEqual(outstanding_mine.debit, 90.00, "The debit amount of the outstanding line should be 90.00")
