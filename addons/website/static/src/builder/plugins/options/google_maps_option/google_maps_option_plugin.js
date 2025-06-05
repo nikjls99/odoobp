@@ -82,6 +82,12 @@ export class GoogleMapsOptionPlugin extends Plugin {
                     editingElement.querySelector(".description").remove();
                 },
             },
+            googleMapDescriptionTextValue: {
+                getValue: ({ editingElement }) => editingElement.querySelector(".description")?.textContent.trim().replace(/\s+/g, ' ') || "",
+                apply: ({ editingElement, value }) => {
+                    editingElement.querySelector(".description").textContent = value;
+                },
+            }
         };
     }
 
