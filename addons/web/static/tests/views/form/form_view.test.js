@@ -9676,7 +9676,7 @@ test(`coming to a form view from a grouped and sorted list`, async () => {
     await toggleMenuItem("bar");
     expect(`.o_group_header`).toHaveCount(2);
     expect(`.o_data_row`).toHaveCount(0);
-    expect.verifySteps(["partner:web_read_group"]);
+    expect.verifySteps(["partner:web_read_group_unity"]);
 
     await contains(`.o_group_header:eq(1)`).click();
     expect(`.o_group_header`).toHaveCount(2);

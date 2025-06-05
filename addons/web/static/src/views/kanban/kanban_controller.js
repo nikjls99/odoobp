@@ -102,8 +102,8 @@ export class KanbanController extends Component {
                 return super.load(...arguments);
             }
 
-            async _webReadGroup() {
-                const result = await super._webReadGroup(...arguments);
+            async _webReadGroupUnity() {
+                const result = await super._webReadGroupUnity(...arguments);
                 if (!this.initialSampleGroups) {
                     this.initialSampleGroups = JSON.parse(JSON.stringify(result.groups));
                 }

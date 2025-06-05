@@ -244,8 +244,8 @@ export class ORM {
     /**
      * @param {string} model
      * @param {import("@web/core/domain").DomainListRepr} domain
-     * @param {string[]} fields
      * @param {string[]} groupby
+     * @param {string[]} aggregates
      * @param {any} [kwargs={}]
      * @returns {Promise<any[]>}
      */
@@ -263,6 +263,25 @@ export class ORM {
                 group["__domain"] = Domain.and([domain, group["__extra_domain"]]).toList();
             }
             return res;
+        });
+    }
+
+    /**
+     * @param {string} model
+     * @param {import("@web/core/domain").DomainListRepr} domain
+     * @param {string} groupby
+     * @param {string[]} aggregates
+     * @param {any} [kwargs={}]
+     * @returns {Promise<any[]>}
+     */
+    webReadGroupUnity(model, domain, groupby, aggregates, kwargs = {}) {
+        validateArray("domain", domain);
+        validatePrimitiveList("aggregates", "string", aggregates);
+        return this.call(model, "web_read_group_unity", [], {
+            domain,
+            groupby,
+            aggregates,
+            ...kwargs,
         });
     }
 

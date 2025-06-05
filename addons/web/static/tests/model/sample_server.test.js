@@ -211,14 +211,16 @@ describe("RPC calls", () => {
         expect(result.records[0].manager_id.display_name).toMatch(/\w+/);
     });
 
-    test("'web_read_group': no group", async () => {
+    test("'web_read_group_unity': no group", async () => {
         const server = new DeterministicSampleServer("hobbit", fields.hobbit);
         server.setExistingGroups(null);
         const result = await server.mockRpc({
-            method: "web_read_group",
+            method: "web_read_group_unity",
             model: "hobbit",
             groupBy: ["profession"],
             aggregates: ["__count"],
+            unfolded_group_limit: 10,
+            unfold_read_specification: { display_name: {}, age: {}, profession: {} },
         });
         expect(result).toEqual({
             groups: [
@@ -226,23 +228,30 @@ describe("RPC calls", () => {
                     __extra_domain: [],
                     profession: "adventurer",
                     __count: 5,
+                    __records: server.data.hobbit.records.filter(
+                        (r) => r.profession === "adventurer"
+                    ),
                 },
                 {
                     __extra_domain: [],
                     profession: "brewer",
                     __count: 5,
+                    __records: server.data.hobbit.records.filter((r) => r.profession === "brewer"),
                 },
                 {
                     __extra_domain: [],
                     profession: "gardener",
                     __count: 6,
+                    __records: server.data.hobbit.records.filter(
+                        (r) => r.profession === "gardener"
+                    ),
                 },
             ],
             length: 3,
         });
     });
 
-    test("'web_read_group': 2 groups", async () => {
+    test("'web_read_group_unity': 2 groups", async () => {
         const server = new DeterministicSampleServer("hobbit", fields.hobbit);
         const existingGroups = [
             { profession: "gardener", count: 0 }, // fake group
@@ -250,19 +259,21 @@ describe("RPC calls", () => {
         ];
         server.setExistingGroups(existingGroups);
         const result = await server.mockRpc({
-            method: "web_read_group",
+            method: "web_read_group_unity",
             model: "hobbit",
             groupBy: ["profession"],
             aggregates: ["__count"],
+            unfolded_group_limit: 10,
+            unfold_read_specification: { display_name: {}, age: {} },
         });
         expect(result).toHaveLength(2);
         expect(result.groups).toHaveLength(2);
         expect(result.groups.map((g) => g.profession)).toEqual(["gardener", "adventurer"]);
         expect(result.groups.reduce((acc, g) => acc + g.__count, 0)).toBe(MAIN_RECORDSET_SIZE);
-        expect(result.groups.every((g) => g.__count === g.__recordIds.length)).toBe(true);
+        expect(result.groups.every((g) => g.__count === g.__records.length)).toBe(true);
     });
 
-    test("'web_read_group': all groups", async () => {
+    test("'web_read_group_unity': all groups", async () => {
         const server = new DeterministicSampleServer("hobbit", fields.hobbit);
         const existingGroups = [
             { profession: "gardener", count: 0 }, // fake group
@@ -271,10 +282,12 @@ describe("RPC calls", () => {
         ];
         server.setExistingGroups(existingGroups);
         const result = await server.mockRpc({
-            method: "web_read_group",
+            method: "web_read_group_unity",
             model: "hobbit",
             groupBy: ["profession"],
             aggregates: ["__count"],
+            unfolded_group_limit: 10,
+            unfold_read_specification: { display_name: {}, age: {} },
         });
         expect(result.length).toBe(3);
         expect(result.groups).toHaveLength(3);
@@ -284,13 +297,13 @@ describe("RPC calls", () => {
             "adventurer",
         ]);
         expect(result.groups.reduce((acc, g) => acc + g.__count, 0)).toBe(MAIN_RECORDSET_SIZE);
-        expect(result.groups.every((g) => g.__count === g.__recordIds.length)).toBe(true);
+        expect(result.groups.every((g) => g.__count === g.__records.length)).toBe(true);
     });
 
-    test("'web_read_group': 'max' aggregator", async () => {
+    test("'web_read_group_unity': 'max' aggregator", async () => {
         const server = new DeterministicSampleServer("res.users", fields["res.users"]);
         const result = await server.mockRpc({
-            method: "web_read_group",
+            method: "web_read_group_unity",
             model: "res.users",
             groupBy: ["name"],
             aggregates: ["age:max", "height:min"],

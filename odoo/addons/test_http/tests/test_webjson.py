@@ -21,7 +21,7 @@ CSRF_USER_HEADERS = {
 
 
 def read_group_list(model, domain=None, groupby=(), aggregates=('__count',)):
-    result = model.web_read_group(domain or [], groupby=groupby, aggregates=aggregates)
+    result = model.web_read_group_unity(domain or [], groupby=groupby, aggregates=aggregates)
     # transform result:
     # - tuple into list
     # - pop '__extra_domain'

@@ -7,6 +7,7 @@ import {
     serializeDate,
     serializeDateTime,
 } from "@web/core/l10n/dates";
+import { orderByToString } from "@web/search/utils/order_by";
 import { ensureArray, intersection, isIterable, unique } from "@web/core/utils/arrays";
 import { deepCopy, isObject, pick } from "@web/core/utils/objects";
 import * as fields from "./mock_fields";
@@ -314,7 +315,7 @@ const formatFieldValue = (fields, groupByField, val) => {
 const getOrderByField = ({ _fields, _name }, fieldNameSpec) => {
     const fieldName = fieldNameSpec?.split(":")[0] || ("sequence" in _fields ? "sequence" : "id");
     if (!(fieldName in _fields)) {
-        throw fieldNotFoundError(_name, fieldName, "could not order records");
+        return null;
     }
     return _fields[fieldName];
 };
@@ -624,7 +625,7 @@ const orderByField = (model, orderBy, records) => {
     // Prepares a values map if needed to easily retrieve the ordering
     // factor associated to a certain id or value.
     let valuesMap;
-    if (field.type in DEFAULT_RELATIONAL_FIELD_VALUES) {
+    if (field && field.type in DEFAULT_RELATIONAL_FIELD_VALUES) {
         let valueLength;
         const coModel = getRelation(field);
         const coField = getOrderByField(coModel);
@@ -652,46 +653,53 @@ const orderByField = (model, orderBy, records) => {
                 }
             })
         );
-    } else if (field.type in DEFAULT_SELECTION_FIELD_VALUES) {
+    } else if (field && field.type in DEFAULT_SELECTION_FIELD_VALUES) {
         // Selection order is determined by the index of each value
         valuesMap = new Map(field.selection.map((v, i) => [v[0], i]));
     }
 
     // Actual sorting
     const sortedRecords = records.sort((r1, r2) => {
+        if (!Object.hasOwn(r1, fieldNameSpec) || !Object.hasOwn(r2, fieldNameSpec)) {
+            throw new MockServerError(
+                `Cannot order by ${fieldNameSpec} because the field/spec isn't not in the record/group`
+            );
+        }
         let v1 = r1[fieldNameSpec];
         let v2 = r2[fieldNameSpec];
-        switch (field.type) {
-            case "boolean": {
-                v1 = Number(v1);
-                v2 = Number(v2);
-                break;
-            }
-            case "many2one":
-            case "many2one_reference": {
-                v1 &&= valuesMap.get(v1[0]);
-                v2 &&= valuesMap.get(v2[0]);
-                break;
-            }
-            case "many2many":
-            case "one2many": {
-                // Co-records have already been sorted -> comparing the joined
-                // list of each of them will yield the proper result.
-                v1 &&= v1.map((id) => valuesMap.get(id)).join("");
-                v2 &&= v2.map((id) => valuesMap.get(id)).join("");
-                break;
-            }
-            case "date":
-            case "datetime": {
-                v1 = Array.isArray(v1) ? new Date(v1[0]).getTime() : v1;
-                v2 = Array.isArray(v2) ? new Date(v2[0]).getTime() : v2;
-                break;
-            }
-            case "reference":
-            case "selection": {
-                v1 &&= valuesMap.get(v1);
-                v2 &&= valuesMap.get(v2);
-                break;
+        if (field) {
+            switch (field.type) {
+                case "boolean": {
+                    v1 = Number(v1);
+                    v2 = Number(v2);
+                    break;
+                }
+                case "many2one":
+                case "many2one_reference": {
+                    v1 &&= valuesMap.get(v1[0]);
+                    v2 &&= valuesMap.get(v2[0]);
+                    break;
+                }
+                case "many2many":
+                case "one2many": {
+                    // Co-records have already been sorted -> comparing the joined
+                    // list of each of them will yield the proper result.
+                    v1 &&= v1.map((id) => valuesMap.get(id)).join("");
+                    v2 &&= v2.map((id) => valuesMap.get(id)).join("");
+                    break;
+                }
+                case "date":
+                case "datetime": {
+                    v1 = Array.isArray(v1) ? new Date(v1[0]).getTime() : v1;
+                    v2 = Array.isArray(v2) ? new Date(v2[0]).getTime() : v2;
+                    break;
+                }
+                case "reference":
+                case "selection": {
+                    v1 &&= valuesMap.get(v1);
+                    v2 &&= valuesMap.get(v2);
+                    break;
+                }
             }
         }
         let result;
@@ -702,7 +710,7 @@ const orderByField = (model, orderBy, records) => {
         } else {
             if (!["boolean", "number", "string"].includes(typeof v1) || typeof v1 !== typeof v2) {
                 throw new MockServerError(
-                    `cannot order by field "${field.name}" in model "${
+                    `cannot order by field "${fieldNameSpec}" in model "${
                         model._name
                     }": values must be of the same primitive type (got ${typeof v1} and ${typeof v2})`
                 );
@@ -1168,6 +1176,36 @@ const viewNotFoundError = (modelName, viewType, viewId, consequence) => {
         message += `: ${consequence}`;
     }
     return new MockServerError(message);
+};
+
+const getReadGroupOrder = (forcedOrder, groupby, aggregates) => {
+    if (!forcedOrder) {
+        return groupby.join(", ");
+    }
+    groupby = groupby.slice();
+    const orderSpecs = [];
+    for (const orderSpec of forcedOrder) {
+        const { name: fname, asc } = orderSpec;
+        const direction = asc ? "ASC" : "DESC";
+        if (fname == "__count") {
+            orderSpecs.push(`${fname} ${direction}`);
+            continue;
+        }
+        for (const groupbySpec of groupby) {
+            if (fname === groupbySpec || groupbySpec.startsWith(`${fname}:`)) {
+                groupby.splice(groupby.indexOf(groupbySpec), 1);
+                orderSpecs.push(`${groupbySpec} ${direction}`);
+                break;
+            }
+        }
+        for (const agg of aggregates) {
+            if (fname === agg || agg.startsWith(`${fname}:`)) {
+                orderSpecs.push(`${agg} ${direction}`);
+                break;
+            }
+        }
+    }
+    return [...orderSpecs, ...groupby].join(", ");
 };
 
 // Other constants
@@ -2495,6 +2533,187 @@ export class Model extends Array {
         const groups = this.formatted_read_group(kwargs);
         const allGroups = this.formatted_read_group(domain, groupby, []);
         return { groups, length: allGroups.length };
+    }
+
+    /**
+     * @param {DomainListRepr} domain
+     * @param {Record<string, any>} fields
+     * @param {string[]} groupby
+     * @param {number} [limit]
+     * @param {number} [offset]
+     * @param {string} [orderby]
+     * @param {boolean} [lazy]
+     */
+    web_read_group_unity(
+        domain,
+        groupby,
+        aggregates,
+        limit,
+        offset,
+        forced_order,
+        unfolded_group_limit,
+        opening_info,
+        unfold_read_specification,
+        unfold_read_default_limit,
+        groupby_read_specification
+    ) {
+        const kwargs = getKwArgs(
+            arguments,
+            "domain",
+            "groupby",
+            "aggregates",
+            "limit",
+            "offset",
+            "forced_order",
+            "unfolded_group_limit",
+            "opening_info",
+            "unfold_read_specification",
+            "unfold_read_default_limit",
+            "groupby_read_specification"
+        );
+        ({
+            domain,
+            groupby,
+            aggregates,
+            limit,
+            offset,
+            forced_order,
+            unfolded_group_limit,
+            opening_info,
+            unfold_read_specification,
+            unfold_read_default_limit,
+            groupby_read_specification,
+        } = kwargs);
+
+        // FIXME:
+        // - forced_order not take in account for the formatted read group
+        aggregates = ["__count", ...aggregates];
+        const order = getReadGroupOrder(forced_order, [groupby[0]], aggregates);
+        let groups = this.formatted_read_group(
+            domain,
+            [groupby[0]],
+            aggregates,
+            [],
+            null,
+            null,
+            order
+        );
+        const length = groups.length;
+        groups = groups.slice(offset ? offset - 1 : 0, limit);
+
+        this._openGroups(
+            groups,
+            domain,
+            groupby,
+            aggregates,
+            forced_order,
+            opening_info,
+            unfolded_group_limit,
+            {
+                specification: unfold_read_specification,
+                offset: 0,
+                limit: unfold_read_default_limit,
+                order: orderByToString(forced_order),
+            },
+            groupby_read_specification
+        );
+
+        return { groups, length };
+    }
+
+    _openGroups(
+        groups,
+        mainDomain,
+        remainingGroupby,
+        aggregates,
+        forcedOrder,
+        infoOpening,
+        nbAutoOpen,
+        webSearchArgs,
+        groupbyReadSpecification
+    ) {
+        let groupInfos = false;
+        if (infoOpening && infoOpening.length !== 0) {
+            groupInfos = Object.fromEntries(infoOpening.map((info) => [info.value, info]));
+        }
+        const previousGroupby = remainingGroupby[0];
+        const field = this._fields[previousGroupby.split(":")[0]];
+        let nbOpenedGroup = 0;
+
+        if (groupbyReadSpecification && Object.hasOwn(groupbyReadSpecification, previousGroupby)) {
+            const readSpec = groupbyReadSpecification[previousGroupby];
+            for (const group of groups) {
+                const id = group[previousGroupby][0];
+                group.__values = this.web_read([id], readSpec);
+            }
+        }
+
+        for (const group of groups) {
+            let fold = false;
+            if (Object.hasOwn(group, "__fold")) {
+                fold = group.__fold;
+                delete group.__fold;
+            }
+
+            if (nbAutoOpen && nbOpenedGroup >= nbAutoOpen) {
+                continue;
+            }
+
+            const groupbyValue = group[previousGroupby];
+            const rawGroupbyValue = Array.isArray(groupbyValue) ? groupbyValue[0] : groupbyValue;
+
+            const argsRead = { ...webSearchArgs };
+            let subgroupOpeningInfo = null;
+            let extraDomain = [];
+            if (groupInfos && Object.hasOwn(groupInfos, rawGroupbyValue)) {
+                const groupInfo = groupInfos[rawGroupbyValue];
+                if (groupInfo.folded) {
+                    continue;
+                }
+                argsRead.limit = groupInfo.limit;
+                argsRead.offset = groupInfo.offset;
+                extraDomain = groupInfo.extra_domain || [];
+                subgroupOpeningInfo = groupInfo.groups;
+            } else if (!nbAutoOpen || fold || (field.relation && !groupbyValue)) {
+                continue;
+            }
+
+            nbOpenedGroup += 1;
+            if (remainingGroupby.length == 1) {
+                const groupDomain = [...group.__extra_domain, ...mainDomain, ...extraDomain];
+                group.__records = this.web_search_read(
+                    groupDomain,
+                    ...Object.values(argsRead)
+                ).records;
+            } else {
+                const groupDomain = [...group.__extra_domain, ...mainDomain];
+
+                let groups = this.formatted_read_group(
+                    groupDomain,
+                    [remainingGroupby[1]],
+                    aggregates,
+                    [],
+                    null,
+                    null,
+                    getReadGroupOrder(forcedOrder, [remainingGroupby[1]], aggregates)
+                );
+                const length = groups.length;
+                groups = groups.slice(argsRead.offset ? argsRead.offset - 1 : 0, argsRead.limit);
+                group.__groups = { groups, length };
+
+                this._openGroups(
+                    groups,
+                    groupDomain,
+                    remainingGroupby.slice(1),
+                    aggregates,
+                    forcedOrder,
+                    subgroupOpeningInfo,
+                    0,
+                    webSearchArgs,
+                    groupbyReadSpecification
+                );
+            }
+        }
     }
 
     /**

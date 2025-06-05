@@ -35,3 +35,30 @@ class TestModelDeprecations(TransactionCase):
                     continue
                 module = inspect.getmodule(Model.name_get)
                 self.fail(f"Deprecated name_get method found on {model_name} in {module.__name__}, you should override `_compute_display_name` instead")
+
+    def test_multi_search(self):
+        # TODO: to remove
+        for Model in self.registry.values():
+            if Model._abstract or not Model._auto:
+                continue
+            model = Model(self.env, (), ())
+            aggregates = [
+                f'{fname}:{aggregator}' for fname, field in model._fields.items()
+                if (aggregator := field._description_aggregator(model.env))
+            ]
+            aggregates.append('__count')
+            for field in model._fields.values():
+                if field.type in ('properties', 'properties_definition', 'json'):
+                    continue
+                if field.name in ('id', 'analytic_distribution'):
+                    continue
+                if not field._description_groupable(model.env):
+                    continue
+                if field.type in ('datetime', 'date'):
+                    groupby = f"{field.name}:month"
+                else:
+                    groupby = field.name
+                with self.subTest(f"{model}.web_read_group_unity([], [{groupby!r}], {aggregates!r}, ...)"):
+                    model.web_read_group_unity(
+                        [], [groupby], aggregates,
+                        unfolded_group_limit=10, unfold_read_specification={'display_name': {}})

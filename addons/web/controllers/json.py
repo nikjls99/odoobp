@@ -180,7 +180,7 @@ class WebJsonController(http.Controller):
         domain = Domain.AND(domains)
         # Reading a group or a list
         if groupby:
-            res = model.web_read_group(
+            res = model.web_read_group_unity(
                 domain,
                 aggregates=aggregates,
                 groupby=groupby,
