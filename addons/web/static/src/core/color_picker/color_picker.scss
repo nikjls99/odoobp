@@ -32,6 +32,9 @@
         }
     }
 }
+.transparent{
+    @extend %o-preview-alpha-background;
+}
 
 .o_gradient_color_button {
   border-width: 0px;
