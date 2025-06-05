@@ -18,6 +18,8 @@ patch(ChannelMemberList.prototype, {
         if (!this.avatarCard.isOpen) {
             this.avatarCard.open(ev.currentTarget, {
                 id: member.persona.userId,
+                thread: this.props.thread,
+                channelMember: member,
             });
         }
     },
