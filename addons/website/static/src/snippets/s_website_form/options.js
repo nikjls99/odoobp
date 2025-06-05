@@ -88,10 +88,10 @@ const FormEditor = options.Class.extend({
      * @param {string} name The name of the field used also as label
      * @returns {Object}
      */
-    _getCustomField: function (type, name) {
+    _getCustomField: function (type, label, name) {
         return {
-            name: name,
-            string: name,
+            name: name || label,
+            string: label,
             custom: true,
             type: type,
             // Default values for x2many fields and selection
@@ -242,7 +242,8 @@ const FieldEditor = FormEditor.extend({
         let field;
         const labelText = this.$target.find('.s_website_form_label_content').text();
         if (this._isFieldCustom()) {
-            field = this._getCustomField(this.$target[0].dataset.type, labelText);
+            const inputNameText = this.$target[0].querySelector(".s_website_form_input").getAttribute("name");
+            field = this._getCustomField(this.$target[0].dataset.type, labelText, inputNameText);
         } else {
             field = Object.assign({}, this.fields[this._getFieldName()]);
             field.string = labelText;
@@ -954,6 +955,17 @@ options.registry.WebsiteFieldEditor = FieldEditor.extend({
             await this._replaceField(field);
         }
         return _super(...arguments);
+    },
+    /**
+     * @override
+     */
+    onBuilt: async function () {
+        await this._super(...arguments);
+        // Re-render the field to ensure unique field IDs across multiple form
+        // snippets
+        const field = this._getActiveField();
+        const fieldEl = this._renderField(field);
+        this._replaceFieldElement(fieldEl);
     },
     /**
      * @override
