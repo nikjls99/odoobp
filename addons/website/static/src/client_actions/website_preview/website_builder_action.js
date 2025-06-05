@@ -392,6 +392,9 @@ export class WebsiteBuilder extends Component {
     async reloadIframeAndCloseEditor() {
         const isEditing = false;
         this.state.isEditing = isEditing;
+        // Note: Public root will reinitialize on reload iframe
+        const topDocument = window.frameElement?.ownerDocument || document;
+        topDocument.body.classList.add("o_public_root_initializing");
         await this.reloadIframe(isEditing);
     }
 
