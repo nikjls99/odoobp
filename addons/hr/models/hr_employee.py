@@ -401,6 +401,9 @@ class HrEmployee(models.Model):
                 })
         return version_to_copy.copy(values)
 
+    def _is_in_contract(self, date):
+        return self._get_version(date)._is_in_contract(date)
+
     def _get_all_contract_dates(self):
         """
         Return a list of intervals (date_from, date_to) where the employee is in contract.
