@@ -23,9 +23,10 @@ export class MailComposerAttachmentSelector extends Component {
 
     /** @param {Object} data */
     async onFileUploaded({ data, name, type }) {
-        const resIds = JSON.parse(this.props.record.data.res_ids);
+        const { model, res_ids, res_id } = this.props.record.data;
+        const resIds = res_ids ? JSON.parse(res_ids) : [res_id.resId];
         const thread = await this.mailStore.Thread.insert({
-            model: this.props.record.data.model,
+            model: model,
             id: resIds[0],
         });
         const file = new File([dataUrlToBlob(data, type)], name, { type });
