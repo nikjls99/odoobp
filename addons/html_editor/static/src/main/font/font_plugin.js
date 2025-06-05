@@ -2,7 +2,7 @@ import { Plugin } from "@html_editor/plugin";
 import { isBlock, closestBlock } from "@html_editor/utils/blocks";
 import { fillEmpty } from "@html_editor/utils/dom";
 import { leftLeafOnlyNotBlockPath } from "@html_editor/utils/dom_state";
-import { isVisibleTextNode } from "@html_editor/utils/dom_info";
+import { isEmptyBlock, isVisibleTextNode } from "@html_editor/utils/dom_info";
 import {
     closestElement,
     createDOMPathGenerator,
@@ -104,7 +104,7 @@ const rightLeafOnlyNotBlockPath = createDOMPathGenerator(DIRECTIONS.RIGHT, {
 });
 
 const headingTags = ["H1", "H2", "H3", "H4", "H5", "H6"];
-const handledElemSelector = [...headingTags, "PRE", "BLOCKQUOTE"].join(", ");
+const handledElemSelector = [...headingTags, "PRE", "BLOCKQUOTE"];
 
 export class FontPlugin extends Plugin {
     static id = "font";
@@ -270,6 +270,9 @@ export class FontPlugin extends Plugin {
         ],
         delete_backward_overrides: withSequence(20, this.handleDeleteBackward.bind(this)),
         delete_backward_word_overrides: this.handleDeleteBackward.bind(this),
+
+        /** Predicates */
+        block_to_base_container_predicates: (node) => handledElemSelector.includes(node.nodeName),
     };
 
     setup() {
@@ -443,8 +446,8 @@ export class FontPlugin extends Plugin {
     }
 
     /**
-     * Transform an empty heading, blockquote or pre at the beginning of the
-     * editable into a paragraph.
+     * Transform an empty heading, blockquote, pre or signature container
+     * at the beginning of the editable into a base container.
      */
     handleDeleteBackward({ startContainer, startOffset, endContainer, endOffset }) {
         // Detect if cursor is at the start of the editable (collapsed range).
@@ -452,19 +455,25 @@ export class FontPlugin extends Plugin {
         if (!rangeIsCollapsed) {
             return;
         }
-        // Check if cursor is inside an empty heading, blockquote or pre.
-        const closestHandledElement = closestElement(endContainer, handledElemSelector);
-        if (!closestHandledElement || closestHandledElement.textContent.length) {
+        const block = closestBlock(endContainer);
+        // Check if the block is not empty.
+        if (!isEmptyBlock(block)) {
             return;
         }
-        // Check if unremovable.
-        if (this.getResource("unremovable_node_predicates").some((p) => p(closestHandledElement))) {
+
+        // Check if the block is not transformable to a base container
+        // or is unremovable.
+        if (
+            !this.getResource("block_to_base_container_predicates").some((p) => p(block)) ||
+            this.getResource("unremovable_node_predicates").some((p) => p(block))
+        ) {
             return;
         }
+
         const baseContainer = this.dependencies.baseContainer.createBaseContainer();
-        baseContainer.append(...closestHandledElement.childNodes);
-        closestHandledElement.after(baseContainer);
-        closestHandledElement.remove();
+        fillEmpty(baseContainer);
+        block.after(baseContainer);
+        block.remove();
         this.dependencies.selection.setCursorStart(baseContainer);
         return true;
     }
