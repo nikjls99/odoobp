@@ -6,6 +6,7 @@ from odoo.addons.account.tools import (
     is_valid_structured_reference_fi,
     is_valid_structured_reference_no_se,
     is_valid_structured_reference_nl,
+    is_valid_structured_reference_si,
     is_valid_structured_reference_iso,
     is_valid_structured_reference,
 )
@@ -108,6 +109,26 @@ class StructuredReferenceTest(TransactionCase):
         # Check the entire string
         self.assertFalse(is_valid_structured_reference_nl('5000056789012345-OTHER-RANDOM-STUFF'))
 
+    def test_structured_reference_si(self):
+        # Check the check digit
+        self.assertTrue(is_valid_structured_reference_si("SI01 102-6747"))
+        self.assertTrue(is_valid_structured_reference_si("SI01 140"))
+        self.assertTrue(is_valid_structured_reference_si("SI01 540"))
+        self.assertFalse(is_valid_structured_reference_si("SI05 19-1235-84504"))
+        self.assertFalse(is_valid_structured_reference_si("SI01 102-6743"))
+        self.assertFalse(is_valid_structured_reference_si("SI01 14-1"))
+        self.assertFalse(is_valid_structured_reference_si("SI01 54-9"))
+
+        # Check the Format
+        self.assertFalse(is_valid_structured_reference_si("0519123584503"))  # Missing SI01
+        self.assertFalse(is_valid_structured_reference_si("SI05"))  # No data
+        self.assertFalse(is_valid_structured_reference_si("SI0519---1235"))  # Too many hyphens
+        self.assertFalse(is_valid_structured_reference_si("SI05abcd"))  # Non-numeric
+        self.assertFalse(is_valid_structured_reference_si("SI051912345678901234567890"))  # Too long (over 22 chars)
+        self.assertFalse(is_valid_structured_reference_si(""))  # Empty string
+        self.assertFalse(is_valid_structured_reference_si("SI01"))  # Incomplete reference
+        self.assertFalse(is_valid_structured_reference_si("SI019"))  # Too short
+
     def test_structured_reference(self):
         # Accepts references in structured format
         self.assertTrue(is_valid_structured_reference(' RF18 5390 0754 7034 '))  # ISO
@@ -116,12 +137,14 @@ class StructuredReferenceTest(TransactionCase):
         self.assertTrue(is_valid_structured_reference('2023 0000 98'))  # FI
         self.assertTrue(is_valid_structured_reference('1234 5678 97'))  # NO-SE
         self.assertTrue(is_valid_structured_reference('5000056789012345'))  # NL
+        self.assertTrue(is_valid_structured_reference("SI01 25-20-85"))  # SI
         # Accept references in unstructured format
         self.assertTrue(is_valid_structured_reference(' RF18539007547034'))  # ISO
         self.assertTrue(is_valid_structured_reference(' 020343057642'))  # BE
         self.assertTrue(is_valid_structured_reference('2023000098'))  # FI
         self.assertTrue(is_valid_structured_reference('1234567897'))  # NO-SE
         self.assertTrue(is_valid_structured_reference('5 000 0567 8901 2345'))  # NL
+        self.assertTrue(is_valid_structured_reference("  SI01 25  - 2 0-85  "))  # SI
         # Validates with zero's added in front
         self.assertTrue(is_valid_structured_reference('RF18000000000539007547034'))  # ISO
         self.assertTrue(is_valid_structured_reference('00000000002023000098'))  # FI
@@ -133,9 +156,11 @@ class StructuredReferenceTest(TransactionCase):
         self.assertFalse(is_valid_structured_reference('2023/0000/98'))  # FI
         self.assertFalse(is_valid_structured_reference('1234/5678/97'))  # NO-SE
         self.assertFalse(is_valid_structured_reference('(5)000 0567 8901 2345'))  # NL
+        self.assertFalse(is_valid_structured_reference("0519123584503"))  # SI
         # Does not validate invalid checksum
         self.assertFalse(is_valid_structured_reference('RF17539007547034'))  # ISO
         self.assertFalse(is_valid_structured_reference('020343057641'))  # BE
         self.assertFalse(is_valid_structured_reference('2023000095'))  # FI
         self.assertFalse(is_valid_structured_reference('1234567898'))  # NO-SE
         self.assertFalse(is_valid_structured_reference('6000056789012345'))  # NL
+        self.assertFalse(is_valid_structured_reference("SI01 19-1235-84504"))  # SI
