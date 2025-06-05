@@ -1834,6 +1834,35 @@ class WebsiteSale(payment_portal.PaymentPortal):
             request.env['website.track'].sudo().search(domain).unlink()
         return {}
 
+    @route('/shop/categories', type='jsonrpc', auth='public', website=True)
+    def get_shop_categories(self, filter_id):
+        Category = request.env['product.public.category'].sudo()
+        domain = request.website.website_domain() + [('has_published_products', '=', True)]
+        if not filter_id:
+            categories = Category.search(domain + [('parent_id', '=', False)])
+        else:
+            parent = Category.search(domain + [('id', '=', filter_id)])
+            categories = parent.child_id.filtered('has_published_products') or parent
+        return [{
+            'id': cat.id,
+            'name': cat.name,
+            'website_ribbon_id': cat.website_ribbon_id.id,
+        } for cat in categories]
+
+    @route('/shop/ribbons', type='jsonrpc', auth='public')
+    def get_shop_ribbons(self):
+        return self.env['product.ribbon'].sudo().search_read(
+            domain=[('assign', '=', 'manual')],
+            fields=['id', 'name', 'bg_color', 'text_color', 'style', 'position'],
+        )
+
+    @route('/snippets/category/set_image', type='jsonrpc', auth='public')
+    def set_category_image(self, category_id, media):
+        image_data = request.env['ir.attachment'].browse(media[0]['id']).datas
+        request.env['product.public.category'].browse(category_id).write({
+            'cover_image': image_data,
+        })
+
     @staticmethod
     def _populate_currency_and_pricelist(kwargs):
         website = request.website
