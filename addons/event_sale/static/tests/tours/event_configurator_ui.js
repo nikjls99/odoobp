@@ -14,9 +14,9 @@ registry.category("web_tour.tours").add("event_configurator_tour", {
             run: "click",
         },
         {
-            trigger: "ul.ui-autocomplete a:contains(Design)",
+            trigger: 'ul.ui-autocomplete a:contains(/^Design Fair Los Angeles$/)',
             run: "click",
-        },
+        },        
         {
             trigger: 'div[name="event_ticket_id"] input',
             run: "click",
