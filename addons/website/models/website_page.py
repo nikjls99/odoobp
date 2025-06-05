@@ -22,6 +22,15 @@ class WebsitePage(models.Model):
 
     url = fields.Char('Page URL', required=True)
     view_id = fields.Many2one('ir.ui.view', string='View', required=True, index=True, ondelete="cascade")
+
+    # Combination of inner view update and page update
+    effective_write_uid = fields.Many2one('res.users', "Last Content Update by",
+        compute='_compute_effective_write_uid_and_date',
+        store=True)
+    effective_write_date = fields.Datetime("Last Content Update on",
+        compute='_compute_effective_write_uid_and_date',
+        store=True)
+
     website_indexed = fields.Boolean('Is Indexed', default=True)
     date_publish = fields.Datetime('Publishing Date')
     menu_ids = fields.One2many('website.menu', 'page_id', 'Related Menus')
@@ -33,6 +42,19 @@ class WebsitePage(models.Model):
     # don't use mixin website_id but use website_id on ir.ui.view instead
     website_id = fields.Many2one(related='view_id.website_id', store=True, readonly=False, ondelete='cascade')
     arch = fields.Text(related='view_id.arch', readonly=False, depends_context=('website_id',))
+
+    @api.depends('write_uid', 'view_id.write_uid', 'write_date', 'view_id.write_date')
+    def _compute_effective_write_uid_and_date(self):
+        """ Computes the effective write date/uid of the page, which is the
+            latest between the inner view and the page itself.
+        """
+        for page in self:
+            if page.view_id and page.view_id.write_date > page.write_date:
+                page.effective_write_uid = page.view_id.write_uid.id
+                page.effective_write_date = page.view_id.write_date
+            else:
+                page.effective_write_uid = page.write_uid.id
+                page.effective_write_date = page.write_date
 
     def _compute_is_homepage(self):
         website = self.env['website'].get_current_website()
