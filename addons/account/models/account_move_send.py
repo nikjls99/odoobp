@@ -379,12 +379,13 @@ class AccountMoveSend(models.AbstractModel):
                 raise ValidationError(_("Cannot identify the invoices in the generated PDF: %s", ids))
 
             for invoice, invoice_data in group_invoices_data.items():
+                single_invoice = self._name == 'account.move.send.wizard'
                 invoice_data['pdf_attachment_values'] = {
                     'name': invoice._get_invoice_report_filename(),
                     'raw': content_by_id[invoice.id],
                     'mimetype': 'application/pdf',
-                    'res_model': invoice._name,
-                    'res_id': invoice.id,
+                    'res_model': 'mail.compose.message' if single_invoice and self.scheduled_date else invoice._name,
+                    'res_id': 0 if single_invoice and self.scheduled_date else invoice.id,
                     'res_field': 'invoice_pdf_report_file',  # Binary field
                 }
 
@@ -687,7 +688,7 @@ class AccountMoveSend(models.AbstractModel):
             for invoice, invoice_data in invoices_data_web_service.items()
             if not invoice_data.get('error') or allow_fallback_pdf
         }
-        self._link_invoice_documents(invoices_to_link)
+        return invoices_to_link
 
     @api.model
     def _generate_invoice_fallback_documents(self, invoices_data):
@@ -731,7 +732,10 @@ class AccountMoveSend(models.AbstractModel):
         }
 
         # Generate all invoice documents (PDF and electronic documents if relevant).
-        self._generate_invoice_documents(moves_data, allow_fallback_pdf=allow_fallback_pdf)
+        generated_documents = self._generate_invoice_documents(moves_data, allow_fallback_pdf=allow_fallback_pdf)
+
+        # Link generated decuments to their respective moves.
+        self._link_invoice_documents(generated_documents)
 
         # Manage errors.
         errors = {move: move_data for move, move_data in moves_data.items() if move_data.get('error')}
