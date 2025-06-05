@@ -8,9 +8,9 @@ import {
     pay,
 } from "@website_sale/js/tours/tour_utils";
 
-function assertRewardAmounts(rewards, visibleOnly) {
+function assertRewardAmounts(rewards) {
     const steps = [];
-    const currencyValue = `.oe_currency_value${visibleOnly ? ":visible" : ":not(:visible)"}`;
+    const currencyValue = `.oe_currency_value:visible`;
     for (const [reward, amount] of Object.entries(rewards)) {
         steps.push({
             content: `check if ${reward} reward is correct`,
@@ -30,7 +30,7 @@ function selectDelivery(provider) {
 
 const waitForPaymentPage = {
     content: "wait for Payment page to load",
-    trigger: ".o_total_card:contains(Order summary)",
+    trigger: ".o_total_card button[name='o_payment_submit_button']:contains(Pay now)",
 };
 
 const webTours = registry.category("web_tour.tours");
@@ -63,7 +63,7 @@ webTours.add("check_shipping_discount", {
         ...assertRewardAmounts({ shipping: "- 6.00" }),
         {
             content: "pay with eWallet",
-            trigger: "form[name=claim_reward] a.btn-primary:contains(Pay with eWallet)",
+            trigger: "form[name=claim_reward] a[name='o_loyalty_claim']:contains('Use')",
             run: "click",
         },
         waitForPaymentPage,
@@ -87,7 +87,7 @@ webTours.add("update_shipping_after_discount", {
         goToCart(),
         {
             content: "use eWallet to check it doesn't impact `free_over` shipping",
-            trigger: "a.btn-primary:contains(Pay with eWallet)",
+            trigger: "a[name='o_loyalty_claim']:contains('Use')",
             run: "click",
         },
         {
