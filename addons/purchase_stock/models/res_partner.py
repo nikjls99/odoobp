@@ -48,3 +48,36 @@ class ResPartner(models.Model):
             on_time, ordered = numbers
             partner.on_time_rate = on_time / ordered * 100 if ordered else -1   # use negative number to indicate no data
         (self - seen_partner).on_time_rate = -1
+
+    @api.model
+    def name_search(self, name='', domain=None, operator='ilike', limit=100):
+        base_res = super().name_search(name, domain, operator, limit)
+
+        product_id = self.env.context.get('product_id')
+        if not product_id:
+            return base_res
+
+        product = self.env['product.product'].browse(product_id)
+        if not product.seller_ids:
+            return base_res
+
+        unique_sellers = {s.partner_id.id for s in product.seller_ids}
+
+        res_minus_sellers = [partner for partner in base_res if partner[0] not in unique_sellers]
+        product_sellers = [partner for partner in base_res if partner[0] in unique_sellers]
+
+        return product_sellers + res_minus_sellers[:limit]  # Display product sellers first
+
+    @api.depends('name')
+    def _compute_display_name(self):
+        for rec in self:
+            product_id = rec.env.context.get('product_id')
+
+            if product_id:
+                product = rec.env['product.product'].browse(product_id)
+                seller_ids = set(product.seller_ids.mapped('partner_id').ids)
+                if rec.id in seller_ids:
+                    rec.display_name = f'**{rec.name}**'  # Display product sellers in bold
+                    continue
+
+            rec.display_name = rec.name
