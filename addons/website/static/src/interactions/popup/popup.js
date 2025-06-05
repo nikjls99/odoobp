@@ -28,7 +28,9 @@ export class Popup extends Interaction {
         this.cookieValue = true;
         this.modalEl = this.el.querySelector(".modal");
         /** @type {import("bootstrap").Modal} */
-        this.bsModal = window.Modal.getOrCreateInstance(this.modalEl);
+        this.bsModal = window.Modal.getOrCreateInstance(this.modalEl, {
+            backdrop: true,
+        });
         this.registerCleanup(() => { this.bsModal.dispose() });
 
         this.modalShownOnClickEl = this.el.querySelector(".modal[data-display='onClick']");
