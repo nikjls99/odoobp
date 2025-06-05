@@ -140,6 +140,10 @@ class ProjectTask(models.Model):
     def _read_group_personal_stage_type_ids(self, stages, domain):
         return stages.search(['|', ('id', 'in', stages.ids), ('user_id', '=', self.env.user.id)])
 
+    def _is_stage_shared_with_project(self):
+        project = self.project_id or self.parent_id.project_id
+        return project in self._origin.stage_id.project_ids
+
     active = fields.Boolean(default=True, export_string_translation=False)
     name = fields.Char(string='Title', tracking=True, required=True, index='trigram')
     description = fields.Html(string='Description', sanitize_attributes=False)
@@ -369,14 +373,23 @@ class ProjectTask(models.Model):
             dependent_open_tasks = []
             if task.allow_task_dependencies:
                 dependent_open_tasks = [dependent_task for dependent_task in task.depend_on_ids if dependent_task.state not in CLOSED_STATES]
-            # if one of the blocking task is in a blocking state
-            if dependent_open_tasks:
-                # here we check that the blocked task is not already in a closed state (if the task is already done we don't put it in waiting state)
-                if task.state not in CLOSED_STATES:
-                    task.state = '04_waiting_normal'
-            # if the task as no blocking dependencies and is in waiting_normal, the task goes back to in progress
-            elif task.state not in CLOSED_STATES:
-                task.state = '01_in_progress'
+            # here we check that the blocked task is not already in a closed state (if the task is already done we don't put it in waiting state)
+            if task.state not in CLOSED_STATES:
+                if task.depend_on_ids:
+                    # if one of the blocking task is in a blocking state
+                    if dependent_open_tasks:
+                        task.state = '04_waiting_normal'
+                    # if the task as no blocking dependencies and is in waiting_normal, the task goes back to in progress
+                    else:
+                        task.state = '01_in_progress'
+                elif (
+                    not (
+                        task.env.context.get('active_id')
+                        and task.env.context.get('active_id') != task.project_id.id
+                        and task._is_stage_shared_with_project()
+                    )
+                ) or self._origin.stage_id != self.stage_id:
+                    task.state = '01_in_progress'
 
     @api.depends('state')
     def _compute_is_closed(self):
@@ -399,7 +412,7 @@ class ProjectTask(models.Model):
 
     @api.onchange('project_id')
     def _onchange_project_id(self):
-        if self.state != '04_waiting_normal':
+        if self.state != '04_waiting_normal' and not self._is_stage_shared_with_project():
             self.state = '01_in_progress'
 
     def is_blocked_by_dependences(self):
@@ -1295,7 +1308,7 @@ class ProjectTask(models.Model):
                         task.state = '04_waiting_normal'
                 task.date_last_stage_update = now
         elif 'project_id' in vals:
-            self.filtered(lambda t: t.state != '04_waiting_normal').state = '01_in_progress'
+            self.filtered(lambda t: (t.state != '04_waiting_normal') and not (t._is_stage_shared_with_project())).state = '01_in_progress'
 
         # Do not recompute the state when changing the parent (to avoid resetting the state)
         if 'parent_id' in vals:
