@@ -15,11 +15,11 @@ from odoo.tests.common import users, tagged, HttpCase, warmup
 class TestDiscussFullPerformance(HttpCase, MailCommon):
     # Queries for _query_count_init_store (in order):
     #   1: internalUserGroupId: ref exists
-    #   5: odoobot format:
+    #   6: odoobot format:
     #       - ref exists
     #       - fetch res_partner (_read_format/_to_store)
     #       - _compute_im_status (_read_format/_to_store)
-    #       - _get_on_leave_ids (_compute_im_status override)
+    #       - _compute_remote_work_location_type (_read_format/_to_store)
     #       - fetch res_users (_to_store)
     #   8: settings:
     #       - search (_find_or_create_for_user)
@@ -30,7 +30,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
     #       - search im_livechat_expertise_res_users_settings_rel (_format_settings)
     #       - search mail_canned_response
     #       - fetch res_groups_users_rel (for search mail_canned_response that user can use)
-    _query_count_init_store = 15
+    _query_count_init_store = 16
     # Queries for _query_count_init_messaging (in order):
     #   1: insert res_device_log
     #   1: fetch res_users (for current user, first occurence _get_channels_as_member of _init_messaging)
@@ -62,11 +62,11 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
     #                   - fetch res_users (_compute_im_status)
     #                   - search mail_presence (_compute_im_status)
     #                   - fetch mail_presence (_compute_im_status)
-    #                   - _get_on_leave_ids (_compute_im_status override)
-    #                   - search hr_employee (_compute_im_status override)
-    #                   - fetch hr_employee (_compute_im_status override)
+    #                   - search hr_employee (partner _to_store)
+    #                   - fetch hr_employee (partner _to_store)
     #                   - search hr_leave (leave_date_to)
     #                   - fetch res_users (internal user)
+    #                   - fetch hr_employee_location (partner _to_store)
     #           - _bus_last_id (_to_store_defaults)
     #           - search ir_attachment (_compute_avatar_128)
     #           - count discuss_channel_member (member_count)
@@ -100,10 +100,11 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
     #               - fetch res_users (_compute_im_status)
     #               - search mail_presence (_compute_im_status)
     #               - fetch mail_presence (_compute_im_status)
-    #               - _get_on_leave_ids (_compute_im_status override)
-    #               - search hr_employee (_compute_im_status override)
-    #               - fetch hr_employee (_compute_im_status override)
+    #               - search hr_employee (partner _to_store)
+    #               - fetch hr_employee (partner _to_store)
     #               - search hr_leave (leave_date_to)
+    #               - search hr_employee_location (remote_work_location_type)
+    #               - fetch hr_employee_location (remote_work_location_type)
     #               - fetch res_users (internal user)
     #               - search res_users_settings (livechat username)
     #               - fetch res_users_settings (livechat username)
@@ -389,6 +390,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                     "isInternalUser": True,
                     "is_company": False,
                     "name": "OdooBot",
+                    "remote_work_location_type": False,
                     "leave_date_to": False,
                     "userId": self.user_root.id,
                     "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
@@ -1633,6 +1635,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "is_company": False,
                 "isInternalUser": True,
                 "name": "Ernest Employee",
+                "remote_work_location_type": False,
                 "leave_date_to": False,
                 "userId": user.id,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
@@ -1660,6 +1663,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "is_company": False,
                 "is_public": False,
                 "name": "test1",
+                "remote_work_location_type": False,
                 "userId": user.id,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
             }
@@ -1675,6 +1679,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                     "im_status": "offline",
                     "im_status_access_token": user.partner_id._get_im_status_access_token(),
                     "name": "test2",
+                    "remote_work_location_type": False,
                     "write_date": fields.Datetime.to_string(user.partner_id.write_date),
                 }
             return {
@@ -1687,6 +1692,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "is_company": False,
                 "isInternalUser": True,
                 "name": "test2",
+                "remote_work_location_type": False,
                 "leave_date_to": False,
                 "userId": user.id,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
@@ -1702,6 +1708,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "is_company": False,
                 "isInternalUser": True,
                 "name": "test3",
+                "remote_work_location_type": False,
                 "leave_date_to": False,
                 "userId": user.id,
                 "write_date": fields.Datetime.to_string(self.users[3].partner_id.write_date),
@@ -1717,6 +1724,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "is_company": False,
                 "isInternalUser": True,
                 "name": "test12",
+                "remote_work_location_type": False,
                 "leave_date_to": False,
                 "userId": user.id,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
@@ -1732,6 +1740,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "is_company": False,
                 "isInternalUser": True,
                 "name": "test14",
+                "remote_work_location_type": False,
                 "leave_date_to": False,
                 "userId": user.id,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),
@@ -1747,6 +1756,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "is_company": False,
                 "isInternalUser": True,
                 "name": "test15",
+                "remote_work_location_type": False,
                 "leave_date_to": False,
                 "userId": user.id,
                 "write_date": fields.Datetime.to_string(user.partner_id.write_date),

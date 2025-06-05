@@ -3,14 +3,17 @@ import { Command, serverState } from "@web/../tests/web_test_helpers";
 import { startServer, start, openDiscuss, contains } from "@mail/../tests/mail_test_helpers";
 import { defineHrHolidaysModels } from "@hr_holidays/../tests/hr_holidays_test_helpers";
 
+const { DateTime } = luxon;
+
 describe.current.tags("desktop");
 defineHrHolidaysModels();
 
 test("thread icon of a chat when correspondent is on leave & online", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({
-        im_status: "leave_online",
+        im_status: "online",
         name: "Demo",
+        leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
     });
     pyEnv["discuss.channel"].create({
         channel_member_ids: [
@@ -30,8 +33,9 @@ test("thread icon of a chat when correspondent is on leave & online", async () =
 test("thread icon of a chat when correspondent is on leave & away", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({
-        im_status: "leave_away",
+        im_status: "away",
         name: "Demo",
+        leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
     });
     pyEnv["discuss.channel"].create({
         channel_member_ids: [
@@ -51,8 +55,9 @@ test("thread icon of a chat when correspondent is on leave & away", async () => 
 test("thread icon of a chat when correspondent is on leave & offline", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({
-        im_status: "leave_offline",
+        im_status: "offline",
         name: "Demo",
+        leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
     });
     pyEnv["discuss.channel"].create({
         channel_member_ids: [

@@ -285,6 +285,7 @@ class ResPartner(models.Model):
     company_id: ResCompany = fields.Many2one('res.company', 'Company', index=True)
     color = fields.Integer(string='Color Index', default=0)
     user_ids: ResUsers = fields.One2many('res.users', 'partner_id', string='Users', auto_join=True)
+    main_user_id: ResUsers = fields.Many2one("res.users", compute="_compute_main_user_id")
     partner_share = fields.Boolean(
         'Share Partner', compute='_compute_partner_share', store=True,
         help="Either customer (not a user), either shared user. Indicated the current partner is a customer without "
@@ -410,6 +411,13 @@ class ResPartner(models.Model):
         """ Synchronize sales rep with parent if partner is a person """
         for partner in self.filtered(lambda partner: not partner.user_id and partner.company_type == 'person' and partner.parent_id.user_id):
             partner.user_id = partner.parent_id.user_id
+
+    @api.depends("user_ids.share")
+    def _compute_main_user_id(self):
+        for partner in self:
+            users = partner.with_context(active_test=False).user_ids
+            internal_users = users - users.filtered("share")
+            partner.main_user_id = internal_users[:1] or users[:1]
 
     @api.depends('user_ids.share', 'user_ids.active')
     def _compute_partner_share(self):

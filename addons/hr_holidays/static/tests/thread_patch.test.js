@@ -10,7 +10,7 @@ test("out of office message on direct chat with out of office partner", async ()
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({
         name: "Demo",
-        im_status: "leave_online",
+        im_status: "online",
         leave_date_to: "2023-01-01",
     });
     const channelId = pyEnv["discuss.channel"].create({

@@ -3,12 +3,18 @@ import { Command, serverState } from "@web/../tests/web_test_helpers";
 import { startServer, start, openDiscuss, contains } from "@mail/../tests/mail_test_helpers";
 import { defineHrHolidaysModels } from "@hr_holidays/../tests/hr_holidays_test_helpers";
 
+const { DateTime } = luxon;
+
 describe.current.tags("desktop");
 defineHrHolidaysModels();
 
 test("on leave & online", async () => {
     const pyEnv = await startServer();
-    const partnerId = pyEnv["res.partner"].create({ name: "Demo", im_status: "leave_online" });
+    const partnerId = pyEnv["res.partner"].create({
+        name: "Demo",
+        im_status: "online",
+        leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
+    });
     const channelId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),
@@ -23,7 +29,11 @@ test("on leave & online", async () => {
 
 test("on leave & away", async () => {
     const pyEnv = await startServer();
-    const partnerId = pyEnv["res.partner"].create({ name: "Demo", im_status: "leave_away" });
+    const partnerId = pyEnv["res.partner"].create({
+        name: "Demo",
+        im_status: "away",
+        leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
+    });
     const channelId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),
@@ -38,7 +48,11 @@ test("on leave & away", async () => {
 
 test("on leave & offline", async () => {
     const pyEnv = await startServer();
-    const partnerId = pyEnv["res.partner"].create({ name: "Demo", im_status: "leave_offline" });
+    const partnerId = pyEnv["res.partner"].create({
+        name: "Demo",
+        im_status: "offline",
+        leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
+    });
     const channelId = pyEnv["discuss.channel"].create({
         channel_member_ids: [
             Command.create({ partner_id: serverState.partnerId }),

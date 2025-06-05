@@ -1940,9 +1940,11 @@ class MailCommon(MailCase):
         """ Remove store partner data dependant on other modules if they are not not installed.
         Not written in a modular way to avoid complex override for a simple test tool.
         """
-        if "hr.leave" not in self.env:
-            for data in partners_data:
+        for data in partners_data:
+            if "hr.leave" not in self.env:
                 data.pop("leave_date_to", None)
+            if "hr.employee.location" not in self.env:
+                data.pop("remote_work_location_type", None)
         return list(partners_data)
 
     def _filter_threads_fields(self, /, *threads_data):

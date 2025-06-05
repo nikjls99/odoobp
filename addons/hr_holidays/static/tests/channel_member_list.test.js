@@ -3,6 +3,8 @@ import { Command, serverState } from "@web/../tests/web_test_helpers";
 import { contains, openDiscuss, start, startServer } from "@mail/../tests/mail_test_helpers";
 import { defineHrHolidaysModels } from "@hr_holidays/../tests/hr_holidays_test_helpers";
 
+const { DateTime } = luxon;
+
 describe.current.tags("desktop");
 defineHrHolidaysModels();
 
@@ -10,10 +12,21 @@ test("on leave members are categorised correctly in online/offline", async () =>
     const pyEnv = await startServer();
     const [partnerId1, partnerId2, partnerId3] = pyEnv["res.partner"].create([
         { name: "Online Partner", im_status: "online" },
-        { name: "On Leave Online", im_status: "leave_online" },
-        { name: "On Leave Idle", im_status: "leave_away" },
+        {
+            name: "On Leave Online",
+            im_status: "online",
+            leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
+        },
+        {
+            name: "On Leave Idle",
+            im_status: "away",
+            leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
+        },
     ]);
-    pyEnv["res.partner"].write([serverState.partnerId], { im_status: "leave_offline" });
+    pyEnv["res.partner"].write([serverState.partnerId], {
+        im_status: "offline",
+        leave_date_to: DateTime.now().plus({ days: 3 }).toISODate(),
+    });
     const channelId = pyEnv["discuss.channel"].create({
         name: "TestChanel",
         channel_member_ids: [

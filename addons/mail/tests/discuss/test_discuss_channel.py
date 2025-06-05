@@ -178,6 +178,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                                     "is_company": False,
                                     "name": "Test Partner",
                                     "leave_date_to": False,
+                                    "remote_work_location_type": False,
                                     "userId": False,
                                     "write_date": test_partner_write_date,
                                 },
@@ -224,6 +225,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                                     "is_company": False,
                                     "name": "Test Partner",
                                     "leave_date_to": False,
+                                    "remote_work_location_type": False,
                                     "userId": False,
                                     "write_date": test_partner_write_date,
                                 }
@@ -453,6 +455,7 @@ class TestChannelInternals(MailCommon, HttpCase):
                                 "id": self.user_admin.partner_id.id,
                                 "im_status": self.user_admin.im_status,
                                 "im_status_access_token": self.user_admin.partner_id._get_im_status_access_token(),
+                                "remote_work_location_type": self.user_admin.remote_work_location_type,
                                 "name": self.user_admin.partner_id.name,
                                 "write_date": fields.Datetime.to_string(
                                     self.user_admin.partner_id.write_date
