@@ -1381,9 +1381,12 @@ test("Can remove files of message individually", async () => {
     await contains(
         ":nth-child(1 of .o-mail-Message) :nth-child(2 of .o-mail-AttachmentContainer) [title='Remove']"
     );
-    await contains(":nth-child(2 of .o-mail-Message) .o-mail-AttachmentContainer [title='Remove']", {
-        count: 0,
-    });
+    await contains(
+        ":nth-child(2 of .o-mail-Message) .o-mail-AttachmentContainer [title='Remove']",
+        {
+            count: 0,
+        }
+    );
     await contains(":nth-child(3 of .o-mail-Message) .o-mail-AttachmentContainer [title='Remove']");
 });
 
@@ -2022,4 +2025,30 @@ test("display the notification message's posting date and time", async () => {
     await contains(".o-mail-NotificationMessage", {
         text: "Tom Riddle joined the channel1:00 PM",
     });
+});
+
+test("Pause GIF when thread is not focused", async () => {
+    const pyEnv = await startServer();
+    const channelId = pyEnv["discuss.channel"].create({ name: "General" });
+    const attachmentId = pyEnv["ir.attachment"].create({
+        mimetype: "image/gif",
+        name: "foo.gif",
+        type: "binary",
+        res_id: channelId,
+        res_model: "discuss.channel",
+    });
+    pyEnv["mail.message"].create({
+        attachment_ids: [attachmentId],
+        message_type: "comment",
+        model: "discuss.channel",
+        res_id: channelId,
+    });
+    await start();
+    await openDiscuss(channelId);
+    await focus(".o-mail-Thread");
+    await contains(".o-mail-AttachmentImage:not([data-paused])");
+    queryFirst(".o-mail-Thread").blur();
+    await contains(".o-mail-AttachmentImage[data-paused]");
+    await focus(".o-mail-Thread");
+    await contains(".o-mail-AttachmentImage:not([data-paused])");
 });
