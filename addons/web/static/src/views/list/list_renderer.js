@@ -3,12 +3,14 @@ import { CheckBox } from "@web/core/checkbox/checkbox";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
+import { localization } from "@web/core/l10n/localization";
 import { Pager } from "@web/core/pager/pager";
 import { evaluateBooleanExpr } from "@web/core/py_js/py";
 import { registry } from "@web/core/registry";
-import { useBus, useService } from "@web/core/utils/hooks";
+import { useAutofocus, useBus, useService } from "@web/core/utils/hooks";
 import { useSortable } from "@web/core/utils/sortable_owl";
 import { getTabableElements } from "@web/core/utils/ui";
+import { combineModifiers } from "@web/model/relational_model/utils";
 import { Field, getPropertyFieldInfo } from "@web/views/fields/field";
 import { getTooltipInfo } from "@web/views/fields/field_tooltip";
 import {
@@ -16,25 +18,26 @@ import {
     getClassNameFromDecoration,
     getFormattedValue,
 } from "@web/views/utils";
-import { combineModifiers } from "@web/model/relational_model/utils";
 import { ViewButton } from "@web/views/view_button/view_button";
 import { useBounceButton } from "@web/views/view_hook";
 import { Widget } from "@web/views/widgets/widget";
-import { localization } from "@web/core/l10n/localization";
 import { useMagicColumnWidths } from "./column_width_hook";
 
 import {
     Component,
     onMounted,
     onPatched,
-    status,
+    onWillDestroy,
     onWillPatch,
     onWillRender,
+    status,
     useExternalListener,
     useRef,
+    useState,
 } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { exprToBoolean } from "@web/core/utils/strings";
+import { GroupConfigMenu } from "@web/views/view_components/group_config_menu";
 
 /**
  * @typedef {import('@web/model/relational_model/dynamic_list').DynamicList} DynamicList
@@ -95,7 +98,16 @@ export class ListRenderer extends Component {
     static groupRowTemplate = "web.ListRenderer.GroupRow";
     static useMagicColumnWidths = true;
     static LONG_TOUCH_THRESHOLD = 400;
-    static components = { DropdownItem, Field, ViewButton, CheckBox, Dropdown, Pager, Widget };
+    static components = {
+        DropdownItem,
+        Field,
+        ViewButton,
+        CheckBox,
+        Dropdown,
+        GroupConfigMenu,
+        Pager,
+        Widget,
+    };
     static defaultProps = { hasSelectors: false, cycleOnTab: true };
     static props = [
         "activeActions?",
@@ -170,6 +182,9 @@ export class ListRenderer extends Component {
             this.columns = this.getActiveColumns();
             this.withHandleColumn = this.columns.some((col) => col.widget === "handle");
         });
+        this.state = useState({ groupInput: false });
+        this.groupInputRef = useRef("groupInput");
+        useAutofocus({ refName: "groupInput" });
         let dataRowId;
         let dataGroupId;
         this.rootRef = useRef("root");
@@ -264,6 +279,10 @@ export class ListRenderer extends Component {
             this.lastEditedCell = null;
         });
         this.isRTL = localization.direction === "rtl";
+        this.dialogClose = [];
+        onWillDestroy(() => {
+            this.dialogClose.forEach((close) => close());
+        });
     }
 
     displaySaveNotification() {
@@ -387,6 +406,11 @@ export class ListRenderer extends Component {
 
     get activeActions() {
         return this.props.activeActions || {};
+    }
+
+    get canCreateGroup() {
+        const { activeActions } = this.props.archInfo;
+        return activeActions.createGroup && this.props.list.groupByField.type === "many2one";
     }
 
     get canResequenceRows() {
@@ -685,6 +709,17 @@ export class ListRenderer extends Component {
         return aggregates;
     }
 
+    getGroupConfigMenuProps(group) {
+        return {
+            activeActions: this.props.activeActions,
+            configItems: registry.category("group_config_items").getEntries(),
+            deleteGroup: async () => await this.props.list.deleteGroups([group]),
+            dialogClose: this.dialogClose,
+            group,
+            list: this.props.list,
+        };
+    }
+
     formatAggregateValue(group, column) {
         const { widget, attrs } = column;
         const field = this.props.list.fields[column.name];
@@ -952,13 +987,13 @@ export class ListRenderer extends Component {
     // [ group name ][ aggregate cells  ][ pager]
     // TODO: move this somewhere, compute this only once (same result for each groups actually) ?
     getFirstAggregateIndex(group) {
-        return this.columns.findIndex(
-            (col) => col.name in group.aggregates && col.widget !== "handle"
-        );
+        const aggregates = group ? group.aggregates : this.aggregates;
+        return this.columns.findIndex((col) => col.name in aggregates && col.widget !== "handle");
     }
     getLastAggregateIndex(group) {
+        const aggregates = group ? group.aggregates : this.aggregates;
         const reversedColumns = [...this.columns].reverse(); // reverse is destructive
-        const index = reversedColumns.findIndex((col) => col.name in group.aggregates);
+        const index = reversedColumns.findIndex((col) => col.name in aggregates);
         return index > -1 ? this.columns.length - index - 1 : -1;
     }
     getAggregateColumns(group) {
@@ -1269,6 +1304,27 @@ export class ListRenderer extends Component {
             }
             ev.preventDefault();
             ev.stopPropagation();
+        }
+    }
+
+    /**
+     * @param {KeyboardEvent} ev
+     */
+    onGroupInputKeydown(ev) {
+        const hotkey = getActiveHotkey(ev);
+        if (hotkey === "enter") {
+            this.addNewGroup();
+        }
+        if (hotkey === "escape") {
+            this.state.showGroupInput = false;
+        }
+    }
+
+    addNewGroup() {
+        this.state.showGroupInput = false;
+        const value = this.groupInputRef.el.value;
+        if (value) {
+            this.props.list.createGroup(value);
         }
     }
 
@@ -1786,6 +1842,13 @@ export class ListRenderer extends Component {
     }
 
     /**
+     * @param {Group} group
+     */
+    showGroupGroupConfigMenu(group) {
+        return group.value && ["many2one", "many2many"].includes(group.groupByField.type);
+    }
+
+    /**
      * Returns true if the focus was toggled inside the same cell.
      *
      * @param {string} hotkey
@@ -1909,13 +1972,16 @@ export class ListRenderer extends Component {
      * @param {PointerEvent} ev
      */
     onGlobalClick(ev) {
-        if (!this.editedRecord) {
-            return; // there's no row in edition
+        if (!(this.editedRecord || this.state.showGroupInput)) {
+            return; // there's no row or group in edition
         }
 
         this.tableRef.el.querySelector("tbody").classList.remove("o_keyboard_navigation");
 
         const target = ev.target;
+        if (this.state.showGroupInput && this.groupInputRef.el !== target) {
+            this.state.showGroupInput = false;
+        }
         if (this.tableRef.el.contains(target) && target.closest(".o_data_row")) {
             // ignore clicks inside the table that are originating from a record row
             // as they are handled directly by the renderer.
