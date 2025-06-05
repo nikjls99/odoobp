@@ -227,6 +227,15 @@ const threadPatch = {
         }
         return super.avatarUrl;
     },
+    get busChannel() {
+        if (this.model === "discuss.channel") {
+            return `discuss.channel_${this.id}`;
+        }
+        return super.busChannel;
+    },
+    get subscribeToBusOnDisplay() {
+        return this.model !== "discuss.channel" && super.subscribeToBusOnDisplay;
+    },
     /** @returns {import("models").ChannelMember} */
     computeCorrespondent() {
         if (this.channel_type === "channel") {
