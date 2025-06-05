@@ -886,6 +886,17 @@ export const editorCommands = {
                 font.parentNode.removeChild(font);
                 fontsSet.delete(font);
             }
+            // move `font` element on top of `u` `s`
+            let parent = font.parentNode;
+            while (parent?.childNodes?.length === 1 && ["U", "S"].includes(parent.nodeName)) {
+                const grandparent = parent.parentNode;
+                grandparent.replaceChild(font, parent);
+                const fontContent = font.innerHTML;
+                font.innerHTML = "";
+                font.appendChild(parent);
+                parent.innerHTML = fontContent;
+                parent = font.parentNode;
+            }
         }
         restoreCursor();
         if (wasCollapsed) {
