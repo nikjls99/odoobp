@@ -36,6 +36,10 @@
         &.o_medium {
             font-size: $font-size-base;
         }
+        &.o_above {
+            position: absolute;
+            z-index: 3;
+        }
     }
 
     &-top-right {

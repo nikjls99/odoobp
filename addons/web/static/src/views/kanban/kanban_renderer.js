@@ -16,6 +16,8 @@ import { KanbanHeader } from "./kanban_header";
 import { KanbanRecord } from "./kanban_record";
 import { KanbanRecordQuickCreate } from "./kanban_record_quick_create";
 import { KanbanColumnExamplesDialog } from "./kanban_column_examples_dialog";
+import { Widget } from "@web/views/widgets/widget";
+import { ActionHelper } from "@web/views/action_helper";
 
 const DRAGGABLE_GROUP_TYPES = ["many2one"];
 const MOVABLE_RECORD_TYPES = ["char", "boolean", "integer", "selection", "many2one"];
@@ -44,6 +46,8 @@ export class KanbanRenderer extends Component {
         KanbanHeader,
         KanbanRecord,
         KanbanRecordQuickCreate,
+        Widget,
+        ActionHelper,
     };
     static props = [
         "archInfo",

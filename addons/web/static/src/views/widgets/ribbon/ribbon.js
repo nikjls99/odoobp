@@ -21,6 +21,7 @@ class RibbonWidget extends Component {
     static template = "web.Ribbon";
     static props = {
         ...standardWidgetProps,
+        record: { type: Object, optional: true },
         text: { type: String },
         title: { type: String, optional: true },
         bgClass: { type: String, optional: true },
@@ -37,19 +38,20 @@ class RibbonWidget extends Component {
         } else if (this.props.text.length > 10) {
             classes += " o_medium";
         }
+        if (!this.record) {
+            classes += " o_above";
+        }
         return classes;
     }
 }
 
 export const ribbonWidget = {
     component: RibbonWidget,
-    extractProps: ({ attrs }) => {
-        return {
-            text: attrs.title || attrs.text,
-            title: attrs.tooltip,
-            bgClass: attrs.bg_color,
-        };
-    },
+    extractProps: ({ attrs }) => ({
+        text: attrs.title || attrs.text,
+        title: attrs.tooltip,
+        bgClass: attrs.bg_color,
+    }),
     supportedAttributes: [
         {
             label: _t("Title"),

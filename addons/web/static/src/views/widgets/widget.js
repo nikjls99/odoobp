@@ -130,7 +130,17 @@ export class Widget extends Component {
                 ? this.widget.extractProps(widgetInfo, dynamicInfo)
                 : {};
         }
-
+        if (!record) {
+            for (const tag in this.props) {
+                if (tag !== "name" && Object.prototype.hasOwnProperty.call(this.props, tag)) {
+                    propsFromNode[tag] = this.props[tag];
+                }
+            }
+            return {
+                readonly: readonlyFromModifiers,
+                ...propsFromNode,
+            };
+        }
         return {
             record,
             readonly: !record.isInEdition || readonlyFromModifiers || false,
