@@ -136,3 +136,11 @@
         background-color: #707070 !important;
     }
 }
+
+.o-discuss-CallParticipantCard-customPopover {
+    top: 100%;
+    width: 200px;
+    color: black;
+    right: 0;
+    z-index: $zindex-dropdown;
+}

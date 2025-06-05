@@ -21,6 +21,7 @@ export class CallActionList extends Component {
         this.CALL_PROMOTE_FULLSCREEN = CALL_PROMOTE_FULLSCREEN;
         this.store = useService("mail.store");
         this.rtc = useService("discuss.rtc");
+        this.nativePip = useService("discuss.native_pip");
         this.callActions = useCallActions();
         this.more = useRef("more");
         this.popover = usePopover(Tooltip, {

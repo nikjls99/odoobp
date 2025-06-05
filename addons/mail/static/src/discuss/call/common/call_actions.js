@@ -108,7 +108,7 @@ callActionsRegistry
         sequence: 70,
     })
     .add("picture-in-picture", {
-        condition: (component) => component.rtc && !component?.env?.isSmall,
+        condition: (component) => component.nativePip && component.rtc && !component?.env?.isSmall,
         name: (component) => {
             if (component.rtc?.state.isPipMode) {
                 return _t("Exit Picture in Picture");
@@ -116,14 +116,16 @@ callActionsRegistry
                 return _t("Picture in Picture");
             }
         },
-        isActive: (component) => component.rtc.state.isPipMode,
+        isActive: (component) => component.nativePip.state.isPipMode,
         icon: "oi oi-launch",
         select: (component) => {
-            const isPipMode = component.rtc.state.isPipMode;
+            const isPipMode = component.nativePip.state.isPipMode;
             if (isPipMode) {
                 component.rtc.channel?.openChatWindow();
+                component.nativePip.closePip();
+            } else {
+                component.nativePip.openPip();
             }
-            component.rtc.state.isPipMode = !isPipMode;
         },
         sequence: 80,
     });

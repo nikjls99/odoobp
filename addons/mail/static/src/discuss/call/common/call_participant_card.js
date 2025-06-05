@@ -6,7 +6,14 @@ import { isEventHandled, markEventHandled } from "@web/core/utils/misc";
 import { browser } from "@web/core/browser/browser";
 import { isMobileOS } from "@web/core/browser/feature_detection";
 
-import { Component, onMounted, onWillUnmount, useRef, useExternalListener } from "@odoo/owl";
+import {
+    Component,
+    onMounted,
+    onWillUnmount,
+    useRef,
+    useExternalListener,
+    useState,
+} from "@odoo/owl";
 import { usePopover } from "@web/core/popover/popover_hook";
 import { useService } from "@web/core/utils/hooks";
 import { rpc } from "@web/core/network/rpc";
@@ -23,7 +30,7 @@ export class CallParticipantCard extends Component {
         "isSidebarItem?",
         "compact?",
     ];
-    static components = { CallParticipantVideo };
+    static components = { CallParticipantVideo, CallContextMenu };
     static template = "discuss.CallParticipantCard";
 
     setup() {
@@ -33,6 +40,9 @@ export class CallParticipantCard extends Component {
         this.popover = usePopover(CallContextMenu, {
             arrow: false,
             popoverClass: "border-secondary",
+        });
+        this.state = useState({
+            showCustomPopover: false,
         });
         this.rtc = useService("discuss.rtc");
         this.store = useService("mail.store");
@@ -60,6 +70,7 @@ export class CallParticipantCard extends Component {
             });
         });
         useExternalListener(browser, "fullscreenchange", this.onFullScreenChange);
+        useExternalListener(window, "click", this.onGlobalClick);
     }
 
     get isContextMenuAvailable() {
@@ -210,11 +221,25 @@ export class CallParticipantCard extends Component {
         this.env.bus.trigger("RTC-SERVICE:PLAY_MEDIA");
     }
 
+    onGlobalClick(ev) {
+        if (ev.target.closest("o-discuss-CallParticipantCard-customPopover")) {
+            return;
+        }
+        this.state.showConnectionState = false;
+    }
+
     /**
      * @param {Event} ev
      */
     onContextMenu(ev) {
         markEventHandled(ev, "CallParticipantCard.clickVolumeAnchor");
+        if (this.env.isPipWindow) {
+            if (ev.target.closest("o-discuss-CallParticipantCard-customPopover")) {
+                return;
+            }
+            this.state.showCustomPopover = !this.state.showCustomPopover;
+            return;
+        }
         if (this.popover.isOpen) {
             this.popover.close();
             return;

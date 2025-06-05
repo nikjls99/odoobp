@@ -15,8 +15,8 @@ export class CallPip extends Component {
 
     setup() {
         super.setup();
-        this.rtc = useService("discuss.rtc");
         this.store = useService("mail.store");
+        this.nativePip = useService("discuss.native_pip");
 
         this.state = useState({
             x: PADDING,
@@ -219,7 +219,7 @@ export class CallPip extends Component {
     }
 
     closePip() {
-        this.rtc.state.isPipMode = false;
+        this.nativePip.state.isPipMode = false;
         this.rtc.channel?.openChatWindow();
     }
 
@@ -316,7 +316,7 @@ export class CallPip extends Component {
 }
 
 export const callPipService = {
-    dependencies: ["discuss.rtc", "mail.store"],
+    dependencies: ["discuss.native_pip", "mail.store"],
     start() {
         registry.category("main_components").add("discuss.CallPip", { Component: CallPip });
     },

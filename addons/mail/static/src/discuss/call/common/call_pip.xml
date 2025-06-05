@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="discuss.CallPip">
-        <div t-if="rtc.state.isPipMode and rtc.channel"
+        <div t-if="nativePip.state.isPipMode and !nativePip.isNativePipAvailable and rtc.channel"
              class="o-discuss-CallPip position-fixed d-flex overflow-hidden bg-dark rounded-3"
              t-att-class="{
                 'o-dragging shadow-lg': state.isDragging,

@@ -117,16 +117,16 @@ export function usePopoutAttachment() {
     }
 
     function popout() {
-        mailPopoutService.addHooks(
-            () => {
+        mailPopoutService.addHooks({
+            beforePopout: () => {
                 hideAttachmentView();
                 uiService.bus.trigger("resize");
             },
-            () => {
+            afterPopoutClosed: () => {
                 showAttachmentView();
                 uiService.bus.trigger("resize");
-            }
-        );
+            },
+        });
         mailPopoutService.popout(PopoutAttachmentView, extractPopoutProps(component.props));
     }
 

@@ -9,6 +9,6 @@ Object.assign(ChatWindow.components, { Call });
 patch(ChatWindow.prototype, {
     setup() {
         super.setup(...arguments);
-        this.rtc = useService("discuss.rtc");
+        this.nativePip = useService("discuss.native_pip");
     },
 });

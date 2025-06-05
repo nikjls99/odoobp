@@ -11,3 +11,8 @@
 .o-discuss-CallActionList-pulse {
     animation: pulse 1s infinite;
 }
+
+#call-action-popover {
+  bottom: #{'anchor(top)'};
+  margin-bottom: 8px;
+}
