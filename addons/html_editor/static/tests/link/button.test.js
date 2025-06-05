@@ -3,8 +3,16 @@ import { click, queryOne, queryAll, select, waitFor } from "@odoo/hoot-dom";
 import { animationFrame } from "@odoo/hoot-mock";
 import { setupEditor } from "../_helpers/editor";
 import { cleanLinkArtifacts, unformat } from "../_helpers/format";
+<<<<<<< 3906bd42867c4451cf982085619296d6509af395
 import { contains } from "../../../../web/static/tests/_framework/dom_test_helpers";
 import { getContent } from "../_helpers/selection";
+||||||| ae612382dcbefe584ee345e8d66e8e1077a65915
+import { unformat } from "../_helpers/format";
+=======
+import { waitForNone } from "@odoo/hoot-dom";
+import { getContent, simulateDoubleClickSelect } from "../_helpers/selection";
+import { insertText } from "../_helpers/user_actions";
+>>>>>>> 18abc40de5baa743ab7cdc9d1c5b511b8d6b7203
 
 describe("button style", () => {
     test("editable button should have cursor text", async () => {
@@ -32,6 +40,7 @@ describe("button style", () => {
     });
 });
 
+<<<<<<< 3906bd42867c4451cf982085619296d6509af395
 const allowCustomOpt = {
     config: {
         allowCustomStyle: true,
@@ -168,5 +177,21 @@ describe("Custom button style", () => {
         expect(cleanLinkArtifacts(getContent(el))).toBe(
             '<p><a href="#" target="_blank">Hello[]</a></p>'
         );
+||||||| ae612382dcbefe584ee345e8d66e8e1077a65915
+=======
+describe("button edit", () => {
+    test("button link should be editable with double click select", async () => {
+        const { el, editor } = await setupEditor('<p>this is a <a href="#">link</a></p>');
+        await waitForNone(".o-we-linkpopover");
+        const button = el.querySelector("a");
+        // simulate double click selection
+        await simulateDoubleClickSelect(button);
+        expect(getContent(el)).toBe(
+            '<p>this is a \ufeff<a href="#" class="o_link_in_selection">[\ufefflink]\ufeff</a>\ufeff</p>'
+        );
+        expect(cleanLinkArtifacts(getContent(el))).toBe('<p>this is a <a href="#">[link]</a></p>');
+        await insertText(editor, "X");
+        expect(cleanLinkArtifacts(getContent(el))).toBe('<p>this is a <a href="#">X[]</a></p>');
+>>>>>>> 18abc40de5baa743ab7cdc9d1c5b511b8d6b7203
     });
 });
