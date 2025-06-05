@@ -921,6 +921,17 @@ class StockPicking(models.Model):
                 raise UserError(_("You cannot change the Scheduled Date on a done or cancelled transfer."))
             picking.move_ids.write({'date': picking.scheduled_date})
 
+    def onchange(self, values, field_names, fields_spec):
+        """
+        Override onchange to NOT update scheduled_date on picking when date on move is updated.
+        """
+        result = super().onchange(values, field_names, fields_spec)
+        if 'move_ids_without_package' in field_names and 'value' in result:
+            move_data = values.get('move_ids_without_package', [])
+            if move_data and move_data[0][2].get('date') and result['value'].get('scheduled_date'):
+                result['value'].pop('scheduled_date', None)
+        return result
+
     def _has_scrap_move(self):
         result = {
             picking
