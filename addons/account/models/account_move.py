@@ -169,6 +169,7 @@ class AccountMove(models.Model):
         index=True,
         default="entry",
     )
+    allowed_move_types = fields.Char(compute='_compute_allowed_move_types')
     is_storno = fields.Boolean(
         compute='_compute_is_storno', store=True, readonly=False,
         copy=False,
@@ -1255,6 +1256,22 @@ class AccountMove(models.Model):
                 move.adjusting_entry_origin_label = dict(self._fields['move_type'].selection)[move.adjusting_entry_origin_move_ids.move_type]
             else:
                 move.adjusting_entry_origin_label = False
+
+    @api.depends('move_type')
+    def _compute_allowed_move_types(self):
+        in_move_types = ['in_invoice', 'in_receipt']
+        out_move_types = ['out_invoice', 'out_receipt']
+
+        show_sale_receipts = self.env['ir.config_parameter'].sudo().get_param('account.show_sale_receipts')
+
+        for move in self:
+            default_move_type = move.move_type or move.env.context.get('default_move_type')
+            if default_move_type in in_move_types:
+                move.allowed_move_types = ','.join(in_move_types)
+            elif default_move_type in out_move_types and show_sale_receipts:
+                move.allowed_move_types = ','.join(out_move_types)
+            else:
+                move.allowed_move_types = False
 
     @api.depends('invoice_payment_term_id', 'invoice_date', 'currency_id', 'amount_total_in_currency_signed', 'invoice_date_due')
     def _compute_needed_terms(self):
@@ -5865,6 +5882,9 @@ class AccountMove(models.Model):
 
     def is_entry(self):
         return self.move_type == 'entry'
+
+    def is_receipt(self):
+        return self.move_type in ['out_receipt', 'in_receipt']
 
     @api.model
     def get_sale_types(self, include_receipts=False):
