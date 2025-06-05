@@ -56,6 +56,9 @@ class TestMailChannelMembers(MailCommon):
             'channel_type': 'channel',
             'group_public_id': cls.secret_group.id,
         })
+        cls.group_channel = cls.env['mail.channel'].create({
+            'name': 'Test Group Channel',
+        })
         cls.public_channel = cls.env['mail.channel'].browse(cls.env['mail.channel'].channel_create(group_id=None, name='Public channel of user 1')['id'])
         (cls.group | cls.group_restricted_channel | cls.public_channel).channel_member_ids.unlink()
 
@@ -276,3 +279,25 @@ class TestMailChannelMembers(MailCommon):
             1,  # channel 2 user 1: received 1 message (from message post)
             1,  # channel 2 user 3: received 1 message (from message post)
         ])
+
+    # ------------------------------------------------------------
+    # AUTO-SUBSCRIPTION & ACCESS RIGHTS TESTS
+    # ------------------------------------------------------------
+
+    def test_subscribe_users_skips_inactive_partners_to_avoid_unique_violation(self):
+        self.group_channel.write({'channel_type': 'channel', 'group_ids': [(6, 0, [self.secret_group.id])]})
+        for user in (self.user_1, self.user_2, self.user_3):
+            user.partner_id.active = True
+        self.group_channel.channel_member_ids.unlink()
+        self.assertFalse(self.group_channel.channel_member_ids)
+        expected_ids = (self.secret_group.users.mapped('partner_id').filtered(lambda p: p.active) - self.group_channel.channel_partner_ids).ids
+        result = self.group_channel._subscribe_users_automatically_get_members()
+        self.assertEqual(result[self.group_channel.id], expected_ids)
+        self.group_channel.add_members([self.user_1.partner_id.id])
+        if self.user_2.active:
+            self.user_2.active = False
+        if self.user_2.partner_id.active:
+            self.user_2.partner_id.active = False
+        expected_ids = (self.secret_group.users.mapped('partner_id').filtered(lambda p: p.active) - self.group_channel.channel_partner_ids).ids
+        result = self.group_channel._subscribe_users_automatically_get_members()
+        self.assertEqual(result[self.group_channel.id], expected_ids)
