@@ -4,7 +4,7 @@ import { X2MANY_TYPES, DATE_TIME_TYPE } from "./utils";
 const deepSerialization = (
     record,
     opts,
-    { serialized = {}, uuidMapping = {}, parentRelInverseName = null, stack = [] }
+    { serialized = {}, uuidMapping = {}, parentRelInverseName = null, stack = [], rollback = [] }
 ) => {
     const result = {};
     const { fields, name: currentModel } = record.model;
@@ -15,6 +15,7 @@ const deepSerialization = (
             uuidMapping,
             parentRelInverseName,
             stack,
+            rollback,
         });
 
     // We only care about the fields present in python model
@@ -55,7 +56,11 @@ const deepSerialization = (
 
                     if (typeof childRecord.id === "number" && childRecord._dirty) {
                         toUpdate.push(childRecord);
+
                         childRecord._dirty = false;
+                        rollback.push(() => {
+                            childRecord._dirty = true;
+                        });
                     } else if (typeof childRecord.id !== "number") {
                         toCreate.push(childRecord);
                     }
@@ -111,17 +116,19 @@ const deepSerialization = (
                 processRecords(modelCommands.unlink.get(fieldName) || [], 3);
                 processRecords(modelCommands.delete.get(fieldName) || [], 2);
 
-                [modelCommands.unlink, modelCommands.delete].forEach((commands) => {
+                for (const commands of [modelCommands.unlink, modelCommands.delete]) {
                     const commandList = commands.get(fieldName) || [];
                     const remainingCommands = commandList.filter(
                         ({ parentId }) => parentId !== record.id
                     );
+
+                    rollback.push(() => commands.set(fieldName, [...remainingCommands]));
                     if (remainingCommands.length) {
                         commands.set(fieldName, remainingCommands);
                     } else {
                         commands.delete(fieldName);
                     }
-                });
+                }
             }
             continue;
         }
@@ -168,6 +175,7 @@ const deepSerialization = (
     }
 
     record._dirty = false;
+    rollback.push(() => (record._dirty = true));
 
     // Cleanup: remove empty entries from uuidMapping.
     for (const key in uuidMapping) {
@@ -185,9 +193,13 @@ const deepSerialization = (
 
 export const ormSerialization = (record, opts) => {
     const uuidMapping = {};
+    const rollback = [];
     const result = deepSerialization(record, opts, {
         uuidMapping,
+        rollback,
     });
+
+    result.rollback = () => rollback.forEach((fn) => fn());
     if (Object.keys(uuidMapping).length !== 0) {
         result.relations_uuid_mapping = uuidMapping;
     }

@@ -120,13 +120,6 @@ export class PosStore extends WithLazyGetterTrap {
                 offsetBySearch: {},
             },
         };
-        // Handle offline mode
-        // All of Set of ids
-        this.pendingOrder = {
-            write: new Set(),
-            delete: new Set(),
-            create: new Set(),
-        };
 
         this.hardwareProxy = hardware_proxy;
         this.selectedOrderUuid = null;
@@ -280,10 +273,6 @@ export class PosStore extends WithLazyGetterTrap {
         }
 
         try {
-            const paidOrderNotSynced = this.models["pos.order"].filter(
-                (order) => order.state === "paid" && typeof order.id !== "number"
-            );
-            this.addPendingOrder(paidOrderNotSynced.map((o) => o.id));
             await this.syncAllOrders({ throw: true });
 
             this.dialog.add(AlertDialog, {
@@ -485,7 +474,6 @@ export class PosStore extends WithLazyGetterTrap {
                 }
 
                 const cancelled = this.removeOrder(order, false);
-                this.removePendingOrder(order);
                 if (!cancelled) {
                     return false;
                 } else if (typeof order.id === "number") {
@@ -547,14 +535,6 @@ export class PosStore extends WithLazyGetterTrap {
 
     async afterProcessServerData() {
         // Adding the not synced paid orders to the pending orders
-        const paidUnsyncedOrderIds = this.models["pos.order"]
-            .filter((order) => order.isUnsyncedPaid)
-            .map((order) => order.id);
-
-        if (paidUnsyncedOrderIds.length > 0) {
-            this.addPendingOrder(paidUnsyncedOrderIds);
-        }
-
         this.data.models["pos.order"]
             .filter((order) => order._isResidual)
             .forEach((order) => (order.state = "cancel"));
@@ -1023,13 +1003,11 @@ export class PosStore extends WithLazyGetterTrap {
     removeOrder(order, removeFromServer = true) {
         if (this.config.isShareable || removeFromServer) {
             if (typeof order.id === "number" && !order.finalized) {
-                this.addPendingOrder([order.id], true);
                 this.syncAllOrdersDebounced();
             }
         }
 
         if (typeof order.id === "string" && order.finalized) {
-            this.addPendingOrder([order.id]);
             return;
         }
 
@@ -1151,75 +1129,6 @@ export class PosStore extends WithLazyGetterTrap {
         }
     }
 
-    addPendingOrder(orderIds, remove = false) {
-        if (remove) {
-            for (const id of orderIds) {
-                this.pendingOrder["create"].delete(id);
-                this.pendingOrder["write"].delete(id);
-            }
-
-            this.pendingOrder["delete"].add(...orderIds);
-            return true;
-        }
-
-        for (const id of orderIds) {
-            if (typeof id === "number") {
-                this.pendingOrder["write"].add(id);
-            } else {
-                this.pendingOrder["create"].add(id);
-            }
-        }
-
-        return true;
-    }
-
-    getPendingOrder() {
-        const orderToCreate = this.models["pos.order"].filter(
-            (order) =>
-                this.pendingOrder.create.has(order.id) &&
-                this.shouldCreatePendingOrder(order) &&
-                order
-        );
-        const orderToUpdate = this.models["pos.order"]
-            .readMany(Array.from(this.pendingOrder.write))
-            .filter(Boolean);
-        const orderToDelele = this.models["pos.order"]
-            .readMany(Array.from(this.pendingOrder.delete))
-            .filter(Boolean);
-
-        return {
-            orderToDelele,
-            orderToCreate,
-            orderToUpdate,
-        };
-    }
-
-    shouldCreatePendingOrder(order) {
-        return (
-            order.lines.length > 0 ||
-            order.payment_ids.some((p) => p.payment_method_id.type === "pay_later")
-        );
-    }
-
-    getOrderIdsToDelete() {
-        return [...this.pendingOrder.delete];
-    }
-
-    removePendingOrder(order) {
-        this.pendingOrder["create"].delete(order.id);
-        this.pendingOrder["write"].delete(order.id);
-        this.pendingOrder["delete"].delete(order.id);
-        return true;
-    }
-
-    clearPendingOrder() {
-        this.pendingOrder = {
-            create: new Set(),
-            write: new Set(),
-            delete: new Set(),
-        };
-    }
-
     getSyncAllOrdersContext(orders, options = {}) {
         return {
             config_id: this.config.id,
@@ -1228,43 +1137,43 @@ export class PosStore extends WithLazyGetterTrap {
         };
     }
 
+    get dirtyOrders() {
+        return this.models["pos.order"].filter(
+            (o) => o.isDirty() && o.lines.length > 0 && !o.uiState.rawData.inSynchronization
+        );
+    }
+
     // There for override
     async preSyncAllOrders(orders) {}
     postSyncAllOrders(orders) {}
     async syncAllOrders(options = {}) {
-        const { orderToCreate, orderToUpdate } = this.getPendingOrder();
-        let orders = options.orders || [...orderToCreate, ...orderToUpdate];
+        let serializedOrder = [];
+        const orders = options.orders || this.dirtyOrders;
+        if (orders.length === 0) {
+            return;
+        }
 
-        // Filter out orders that are already being synced
-        orders = orders.filter(
-            (order) => !this.syncingOrders.has(order.id) && (order.isDirty() || options.force)
-        );
+        if (odoo.debug === "assets") {
+            console.debug(
+                "Syncing orders",
+                orders.map((o) => o.id)
+            );
+        }
+
+        for (const order of orders) {
+            order.uiState.rawData.inSynchronization = true;
+            order.recomputeOrderData();
+        }
 
         try {
             if (this.data.network.offline) {
                 throw new ConnectionLostError();
             }
-            const orderIdsToDelete = this.getOrderIdsToDelete();
-            if (orderIdsToDelete.length > 0) {
-                await this.deleteOrders([], orderIdsToDelete);
-            }
 
             const context = this.getSyncAllOrdersContext(orders, options);
             await this.preSyncAllOrders(orders);
 
-            if (orders.length === 0) {
-                return;
-            }
-
-            // Add order IDs to the syncing set
-            orders.forEach((order) => this.syncingOrders.add(order.id));
-
-            // Re-compute all taxes, prices and other information needed for the backend
-            for (const order of orders) {
-                order.recomputeOrderData();
-            }
-
-            const serializedOrder = orders.map((order) => order.serializeForORM());
+            serializedOrder = orders.map((order) => order.serializeForORM());
             const data = await this.data.call("pos.order", "sync_from_ui", [serializedOrder], {
                 context,
             });
@@ -1298,22 +1207,27 @@ export class PosStore extends WithLazyGetterTrap {
                     .forEach((order) => (order.session_id = this.session));
             }
 
-            orders.forEach((o) => this.removePendingOrder(o));
             return newData["pos.order"];
         } catch (error) {
+            for (const order of serializedOrder) {
+                order.rollback();
+            }
+
             if (options.throw) {
                 throw error;
             }
 
             if (error instanceof ConnectionLostError) {
-                console.warn("Offline mode active, order will be synced later");
+                console.info("Offline mode active, order will be synced later");
             } else {
                 this.deviceSync.readDataFromServer();
             }
 
             return error;
         } finally {
-            orders.forEach((order) => this.syncingOrders.delete(order.id));
+            for (const order of orders) {
+                order.uiState.rawData.inSynchronization = false;
+            }
         }
     }
 
@@ -1968,7 +1882,6 @@ export class PosStore extends WithLazyGetterTrap {
 
             order.preset_time = data.slot.datetime;
             if (data.slot.datetime > DateTime.now()) {
-                this.addPendingOrder([order.id]);
                 await this.syncAllOrders({ orders: [order] });
             }
         }

@@ -30,7 +30,7 @@ export class Base extends WithLazyGetterTrap {
      * @param {*} _vals
      */
     setup(_vals) {
-        this._dirty = typeof this.id !== "number";
+        this._dirty = typeof this.id !== "number" || _vals._dirty || false;
     }
 
     /**
@@ -68,8 +68,8 @@ export class Base extends WithLazyGetterTrap {
         return this.model.delete(this, opts);
     }
 
-    serializeForORM() {
-        return this.model.serializeForORM(this);
+    serializeForORM(opts = {}) {
+        return this.model.serializeForORM(this, opts);
     }
 
     serializeForIndexedDB() {
