@@ -16,6 +16,16 @@
         </div>
     </template>
 
+    <data noupdate="1">
+        <record id="portal_manufacturing_orders" model="portal.entry">
+            <field name="name">Manufacturing Orders</field>
+            <field name="description">Follow manufacturing orders you have to fulfill</field>
+            <field name="url">/my/productions</field>
+            <field name="image" type="base64" file="mrp_subcontracting/static/src/img/manufacturing.svg"/>
+            <field name="is_alert">True</field>
+        </record>
+    </data>
+
     <template id="portal_my_home_menu_production" name="Portal layout : production menu entries" inherit_id="portal.portal_breadcrumbs" priority="25">
         <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
             <t t-if="title">

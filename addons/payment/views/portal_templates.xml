@@ -389,4 +389,14 @@
         </div>
     </template>
 
+    <data noupdate="1">
+        <record id="portal_payment_orders" model="portal.entry">
+            <field name="name">Payment Methods</field>
+            <field name="description">Follow Payment</field>
+            <field name="url">/my/payment_method</field>
+            <field name="image" type="base64" file="payment/static/img/payment-methods.svg"/> 
+            <field name="is_alert">True</field>
+        </record>
+    </data>
+
 </odoo>

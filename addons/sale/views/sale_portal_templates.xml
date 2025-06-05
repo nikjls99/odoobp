@@ -43,6 +43,24 @@
         </div>
     </template>
 
+    <data noupdate="1">
+        <record id="portal_quotations_to_review" model="portal.entry">
+            <field name="name">Quotations to review</field>
+            <field name="description">Review your quotations</field>
+            <field name="url">/my/quotes</field>
+            <field name="placeholder_count">quotation_count</field>
+            <field name="background_color">alert alert-primary align-items-center</field>
+        </record>
+        <record id="portal_your_orders" model="portal.entry">
+            <field name="name">Your Orders</field>
+            <field name="description">Follow, view or pay your orders</field>
+            <field name="url">/my/orders</field>
+            <field name="image" type="base64" file="sale/static/src/img/bag.svg"/>
+            <field name="placeholder_count">order_count</field>
+            <field name="background_color">bg-light</field>
+        </record>
+    </data>
+
     <template id="portal_my_quotations" name="My Quotations">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>

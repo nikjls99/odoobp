@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form View for portal.entry -->
+    <record id="portal_entry_view_form" model="ir.ui.view">
+        <field name="name">portal.entry.form</field>
+        <field name="model">portal.entry</field>
+        <field name="arch" type="xml">
+            <form string="Portal Card">
+                <sheet>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <group>
+                            <field name="name"/>
+                            <field name="description"/>
+                            <field name="url"/>
+                            <field name="placeholder_count"/>
+                            <field name="background_color"/>
+                            <field name="is_alert"/>
+                        </group>
+                        <div class="pe-4 pt-2">
+                            <field name="image" widget="image" class="oe_avatar oe_kanban_avatar_64"/>
+                        </div>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- List (Tree) View for portal.entry -->
+    <record id="portal_entry_view_list" model="ir.ui.view">
+        <field name="name">portal.entry.list</field>
+        <field name="model">portal.entry</field>
+        <field name="arch" type="xml">
+            <list string="Portal Entries">
+                <field name="name"/>
+                <field name="description"/>
+                <field name="url"/>
+                <field name="placeholder_count"/>
+                <field name="background_color"/>
+                <field name="is_alert"/>
+            </list>
+        </field>
+    </record>
+
+</odoo>
