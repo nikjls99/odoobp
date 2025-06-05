@@ -20,6 +20,9 @@
             </BuilderSelect>
         </BuilderRow>
     </BuilderRow>
+    <xpath expr="//BuilderSelect[contains(@id, 'o_wsale_product_cta_style')]" position="before">
+        <t t-set="CtaLargeViews" t-value="[...CtaLargeViews, 'website_sale_comparison.product_add_to_compare_large']"/>
+    </xpath>
 </t>
 
 </templates>

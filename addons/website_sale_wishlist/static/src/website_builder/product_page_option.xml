@@ -11,6 +11,12 @@
             Wishlist
         </BuilderButton>
     </BuilderRow>
+    <xpath expr="//BuilderSelect[contains(@id, 'o_wsale_product_cta_style')]" position="before">
+        <t t-set="CtaLargeViews" t-value="[...CtaLargeViews, 'website_sale_wishlist.product_add_to_wishlist_large']"/>
+    </xpath>
+    <xpath expr="//BuilderSelect[contains(@id, 'o_wsale_product_cta_style')]" position="before">
+        <t t-set="CtaBoxedViews" t-value="[...CtaBoxedViews, 'website_sale_wishlist.product_add_to_wishlist_boxed']"/>
+    </xpath>
 </t>
 
 </templates>
