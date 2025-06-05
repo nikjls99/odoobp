@@ -1689,7 +1689,6 @@ export class PosStore extends WithLazyGetterTrap {
                 if (reprint && opts.orderDone) {
                     return;
                 }
-
                 await this.printChanges(order, orderChange, reprint);
             } catch (e) {
                 console.info("Failed in printing the changes in the order", e);
@@ -1703,14 +1702,6 @@ export class PosStore extends WithLazyGetterTrap {
             throw new ConnectionLostError();
         }
         await this.sendOrderInPreparation(o, { cancelled });
-    }
-
-    getStrNotes(note) {
-        return note && typeof note === "string"
-            ? JSON.parse(note)
-                  .map((n) => n.text)
-                  .join(", ")
-            : "";
     }
 
     getOrderData(order, reprint) {
@@ -1748,11 +1739,7 @@ export class PosStore extends WithLazyGetterTrap {
         orderChange.new = [...comboChanges, ...normalChanges];
 
         const orderData = this.getOrderData(order, reprint);
-
         const changes = this.filterChangeByCategories(categories, orderChange);
-        for (const changeItem of [...changes.new, ...changes.cancelled, ...changes.noteUpdate]) {
-            changeItem.note = this.getStrNotes(changeItem.note || "[]");
-        }
         return { orderData, changes };
     }
 

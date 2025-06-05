@@ -70,7 +70,6 @@
             "pos_self_order/static/src/app/**/*",
             "point_of_sale/static/src/app/utils/printer/hw_printer.js",
             "web/static/src/core/utils/render.js",
-            "pos_self_order/static/src/app/store/order_change_receipt_template.xml",
             "account/static/src/helpers/*.js",
             "web/static/src/views/fields/parsers.js",
 
@@ -84,6 +83,7 @@
             "point_of_sale/static/src/app/utils/numbers.js",
             "point_of_sale/static/src/app/hooks/hooks.js",
             "point_of_sale/static/src/app/utils/debug-formatter.js",
+            "point_of_sale/static/src/app/store/order_change_receipt_template.xml",
         ],
         # Assets tests
         "pos_self_order.assets_tests": [
