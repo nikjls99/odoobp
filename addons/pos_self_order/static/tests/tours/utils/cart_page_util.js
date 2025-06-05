@@ -109,9 +109,26 @@ export function checkCombo(comboName, products) {
     return steps;
 }
 
+<<<<<<< 31eaeebfaaed9eb68cd2675471bc5642d1b40edc
 export function checkTotalPrice(price) {
     return {
         content: `The total price to pay is ${price}`,
         trigger: `.order-price :contains(Total):contains(${price})`,
     };
+||||||| 4b6c4c21ffbc50fae9b2a7c38022967811b6d538
+=======
+export function cancelOrder() {
+    return [
+        {
+            content: `Click on 'Cancel' button`,
+            trigger: '.order-cart-content .btn:contains("Cancel")',
+            run: "click",
+        },
+        {
+            content: `Validate cancel popup`,
+            trigger: ".modal-dialog .btn:contains('Cancel Order')",
+            run: "click",
+        },
+    ];
+>>>>>>> 60c8c6226919eb406c33fe5a0f8ce180c0ed258b
 }
