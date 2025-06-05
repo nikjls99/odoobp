@@ -17,11 +17,11 @@ export function useDateTimePicker(hookParams) {
     }
     const inputRefs = [useRef("start-date"), useRef("end-date")];
     const createPopover = hookParams.createPopover ?? usePopover;
+    Object.assign(hookParams, { createPopover });
     const getInputs = () => inputRefs.map((ref) => ref?.el);
     const { computeBasePickerProps, state, open, focusIfNeeded, enable } = datetimePicker.create(
         hookParams,
         getInputs,
-        createPopover
     );
     onWillRender(computeBasePickerProps);
     useEffect(enable, getInputs);
