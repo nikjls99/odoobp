@@ -25,11 +25,15 @@ export class Gallery extends Interaction {
      */
     onClickImg(ev) {
         const clickedEl = ev.currentTarget;
-        if (this.modalEl || clickedEl.matches("a > img")) {
+        if (
+            this.modalEl ||
+            clickedEl.matches("a > img") ||
+            !clickedEl.classList.contains("o_image_popup")
+        ) {
             return;
         }
 
-        let imageEls = this.el.querySelectorAll("img");
+        let imageEls = this.el.querySelectorAll("img.o_image_popup");
         const currentImageEl = clickedEl.closest("img");
         const currentImageIndex = [...imageEls].indexOf(currentImageEl);
         // We need to reset the images to their original source because it might
