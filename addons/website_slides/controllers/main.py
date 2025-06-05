@@ -989,22 +989,30 @@ class WebsiteSlides(WebsiteProfile):
         values.pop('channel', None)
         return request.render("website_slides.slide_main", values)
 
-    @http.route('/slides/slide/<int:slide_id>/share', type='http', auth="public", website=True, sitemap=False)
-    def slide_shared_view(self, slide_id, **kwargs):
-        user_slide_authorization = self._get_user_slide_authorization(slide_id)
-        status = user_slide_authorization['status']
-        if status == 'not_found':
-            raise werkzeug.exceptions.NotFound()
+    @http.route([
+        '/slides/slide/<int:slide_id>/share',
+        '/slides/slide/<model("slide.slide"):slide>/share'
+    ], type='http', auth="public", website=True, sitemap=False, handle_params_access_error=handle_wslide_error)
+    def slide_shared_view(self, slide=None, slide_id=None, **kwargs):
+        status = None
+        if slide_id and not slide:
+            user_slide_authorization = self._get_user_slide_authorization(slide_id)
+            status = user_slide_authorization['status']
+            if status == 'not_found':
+                raise werkzeug.exceptions.NotFound()
+            slide = user_slide_authorization['slide']
+
+        if status is None and slide.has_access('read'):
+            status = 'authorized'
 
         if status == 'authorized':
             return request.redirect(
-                '%s?%s' % (user_slide_authorization['slide'].website_absolute_url, werkzeug.urls.url_encode(kwargs)))
+                '%s?%s' % (slide.website_absolute_url, werkzeug.urls.url_encode(kwargs)))
 
-        channel_id = user_slide_authorization['channel_id']
-        return request.redirect('/slides/%s?%s' % (channel_id, werkzeug.urls.url_encode({
+        return request.redirect('/slides/%s?%s' % (slide.channel_id.id, werkzeug.urls.url_encode({
             'access_error': 'course_content',
-            'access_error_slide_id': slide_id,
-            'access_error_slide_name': user_slide_authorization['slide'].name,
+            'access_error_slide_id': slide.id,
+            'access_error_slide_name': slide.name,
         })))
 
     @http.route('/slides/slide/<model("slide.slide"):slide>/pdf_content',
