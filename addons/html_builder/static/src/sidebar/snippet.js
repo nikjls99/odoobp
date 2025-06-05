@@ -22,4 +22,14 @@ export class Snippet extends Component {
                 .classList.toggle("visually-hidden-focusable", ev.type !== "mouseover");
         }
     }
+
+    onClickInstall() {
+        const editor = this.env.editor;
+        this.props.snippetModel.installSnippetModule(
+            this.props.snippet,
+            editor.config.reloadEditor,
+            editor.shared.savePlugin.save,
+            editor.shared.operation.next
+        );
+    }
 }

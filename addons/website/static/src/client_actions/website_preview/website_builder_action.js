@@ -379,6 +379,11 @@ export class WebsiteBuilder extends Component {
     async reloadEditor(param = {}) {
         this.initialTab = param.initialTab;
         this.target = param.target || null;
+        if (param.reloadWebClient) {
+            const currentPath = encodeURIComponent(window.location.pathname);
+            const websiteId = this.websiteService.currentWebsite.id;
+            redirect(`/odoo/action-website.website_preview?website_id=${encodeURIComponent(websiteId)}&path=${currentPath}&enable_editor=1`);
+        }
         await this.reloadIframe(this.state.isEditing, param.url);
         // trigger an new instance of the builder menu
         this.state.key++;

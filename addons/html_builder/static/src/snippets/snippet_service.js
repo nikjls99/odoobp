@@ -15,6 +15,7 @@ export class SnippetModel extends Reactive {
         this.orm = services.orm;
         this.dialog = services.dialog;
         this.notification = services.notification;
+        this.uiService = services.ui;
         this.snippetsName = snippetsName;
         this.context = context;
         this.loadProm = null;
@@ -79,32 +80,35 @@ export class SnippetModel extends Reactive {
         return this.snippetsByCategory[category].find((snippet) => snippet.name === name);
     }
 
-    installSnippetModule(snippet) {
-        // TODO: Should be the app name, not the snippet name ... Maybe both ?
-        const bodyText = _t("Do you want to install %s App?", snippet.title);
+    installSnippetModule(snippet, reloadEditor, save, next) {
+        const bodyText = _t("Do you want to install %s App?", snippet.moduleDisplayName);
         const linkText = _t("More info about this app.");
         const linkUrl =
             "/odoo/action-base.open_module_tree/" + encodeURIComponent(snippet.moduleId);
 
         this.dialog.add(ConfirmationDialog, {
-            title: _t("Install %s", snippet.title),
-            body: markup`${bodyText}\n<a href="${linkUrl}" target="_blank">${linkText}</a>`,
+            title: _t("Install %s", snippet.moduleDisplayName),
+            body: markup`${bodyText}\n<a href="${linkUrl}" target="_blank"><i class="oi oi-arrow-right me-1"></i>${linkText}</a>`,
             confirm: async () => {
+                this.dialog.closeAll();
                 try {
-                    await this.orm.call("ir.module.module", "button_immediate_install", [
-                        [Number(snippet.moduleId)],
-                    ]);
-                    // TODO Need to Reload webclient
-                    // this._onSaveRequest({
-                    //     data: {
-                    //         reloadWebClient: true,
-                    //     },
-                    // });
+                    next(
+                        async () => {
+                            this.uiService.block();
+                            await save();
+                            await this.orm.call("ir.module.module", "button_immediate_install", [
+                                [parseInt(snippet.moduleId)],
+                            ]);
+                            await reloadEditor({ reloadWebClient: true });
+                        },
+                        { withLoadingEffect: false }
+                    );
                 } catch (e) {
                     if (e instanceof RPCError) {
-                        const message = _t("Could not install module %(title)s", {
-                            title: snippet.title,
-                        });
+                        const message = _t(
+                            "Could not install module %s",
+                            snippet.moduleDisplayName
+                        );
                         this.notification.add(message, {
                             type: "danger",
                             sticky: true,
@@ -129,7 +133,7 @@ export class SnippetModel extends Reactive {
      *     an HTMLElement.
      *                 - `onClose` called when the dialog is closed.
      */
-    openSnippetDialog(snippet, { onSelect, onClose }) {
+    openSnippetDialog(snippet, { onSelect, onClose }, editor) {
         this.dialog.add(
             AddSnippetDialog,
             {
@@ -139,6 +143,7 @@ export class SnippetModel extends Reactive {
                     const newSnippetEl = onSelect(...args);
                     this.cleanSnippetPreview(newSnippetEl);
                 },
+                editor,
             },
             { onClose }
         );
@@ -190,6 +195,7 @@ export class SnippetModel extends Reactive {
                     Object.assign(snippet, {
                         moduleId,
                         isInstallable: !!moduleId,
+                        moduleDisplayName: snippetEl.dataset.moduleDisplayName,
                     });
                 }
                 if (snippetEl.dataset.oeForbidSanitize) {
@@ -402,10 +408,10 @@ export class SnippetModel extends Reactive {
 }
 
 registry.category("services").add("html_builder.snippets", {
-    dependencies: ["orm", "dialog", "website", "notification"],
+    dependencies: ["orm", "dialog", "website", "notification", "ui"],
 
-    start(env, { orm, dialog, website, notification }) {
-        const services = { orm, dialog, website, notification };
+    start(env, { orm, dialog, website, notification, ui }) {
+        const services = { orm, dialog, website, notification, ui };
         const context = {
             website_id: website.currentWebsite?.id,
             lang: website.currentWebsite?.metadata.lang,

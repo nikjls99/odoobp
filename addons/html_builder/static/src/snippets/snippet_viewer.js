@@ -18,6 +18,7 @@ export class SnippetViewer extends Component {
         selectSnippet: { type: Function },
         hasSearchResults: Function,
         snippetModel: { type: Object },
+        editor: { type: Object },
     };
 
     setup() {
@@ -85,7 +86,13 @@ export class SnippetViewer extends Component {
 
     onClick(snippet) {
         if (snippet.moduleId) {
-            this.props.snippetModel.installSnippetModule(snippet);
+            const editor = this.props.editor;
+            this.props.snippetModel.installSnippetModule(
+                snippet,
+                editor.config.reloadEditor,
+                editor.shared.savePlugin.save,
+                editor.shared.operation.next
+            );
         } else {
             this.props.selectSnippet(snippet);
         }
