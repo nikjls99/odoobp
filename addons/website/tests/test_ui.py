@@ -249,7 +249,6 @@ class TestUiTranslate(odoo.tests.HttpCase):
 
         self.start_tour(self.env['website'].get_client_action_url('/'), 'translate_text_options', login='admin')
 
-    @unittest.skip
     def test_snippet_translation(self):
         ResLang = self.env['res.lang']
         parseltongue, fake_user_lang = ResLang.create([{
@@ -595,7 +594,6 @@ class TestUi(HttpCaseWithWebsiteUser):
     def test_30_website_text_animations(self):
         self.start_tour("/", 'text_animations', login='admin')
 
-    @unittest.skip
     def test_31_website_edit_megamenu_big_icons_subtitles(self):
         self.start_tour(self.env['website'].get_client_action_url('/'), 'edit_megamenu_big_icons_subtitles', login='admin')
 

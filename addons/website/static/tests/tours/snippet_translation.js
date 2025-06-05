@@ -66,7 +66,7 @@ registerWebsitePreviewTour('snippet_translation_changing_lang', {
     },
     {
         content: "Open Edit dropdown",
-        trigger: '.o_edit_website_container button',
+        trigger: '.o-website-btn-custo-primary.dropdown-toggle',
         run: "click",
     },
     {

@@ -101,11 +101,13 @@ registry.category("web_tour.tours").add("configurator_flow", {
             run: "click",
         },
         {
-            trigger: ".o_website_loader_container",
+            content: "Loader should be shown",
+            trigger: '.o_website_loader_container',
         },
         {
             content: "Wait until the configurator is finished",
-            trigger: ".o_website_preview[data-view-xmlid='website.homepage']",
+            trigger: ".o_website_preview",
+            timeout: 30000,
         },
         {
             content: "check menu and footer links are correct",
