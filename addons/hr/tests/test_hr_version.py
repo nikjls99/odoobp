@@ -329,18 +329,18 @@ class TestHrVersion(TransactionCase):
             'name': 'John Doe',
             'date_version': '2020-01-01',
         })
-        self.assertFalse(employee._is_in_contract(date(2020, 1, 1)))
         self.assertFalse(employee._is_in_contract(date(2010, 1, 1)))
+        self.assertFalse(employee._is_in_contract(date(2020, 1, 1)))
         self.assertFalse(employee._is_in_contract(date(2030, 1, 1)))
 
         # In a permanent contract, the employee is contract since the contract_date_start
         employee.contract_date_start = '2020-01-01'
-        self.assertFalse(employee._is_in_contract(date(2020, 1, 1)))
-        self.assertTrue(employee._is_in_contract(date(2010, 1, 1)))
+        self.assertFalse(employee._is_in_contract(date(2010, 1, 1)))
+        self.assertTrue(employee._is_in_contract(date(2020, 1, 1)))
         self.assertTrue(employee._is_in_contract(date(2030, 1, 1)))
 
         # In a fixed term contract, the employee is contract in between the contract dates
         employee.contract_date_end = '2029-12-31'
-        self.assertFalse(employee._is_in_contract(date(2020, 1, 1)))
-        self.assertTrue(employee._is_in_contract(date(2010, 1, 1)))
+        self.assertFalse(employee._is_in_contract(date(2010, 1, 1)))
+        self.assertTrue(employee._is_in_contract(date(2020, 1, 1)))
         self.assertFalse(employee._is_in_contract(date(2030, 1, 1)))
