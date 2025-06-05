@@ -1189,6 +1189,12 @@
                                                column_invisible="parent.move_type not in ['in_invoice', 'in_refund']"
                                                string="Professional %"
                                                optional="hide"/>
+                                        <field
+                                            name="print_details"
+                                            widget="print_details_boolean_toggle"
+                                            invisible="display_type != 'line_section'"
+                                            readonly="not has_same_taxes"
+                                        />
                                         <field name="price_subtotal"
                                                column_invisible="parent.move_type not in ['in_invoice', 'in_refund', 'in_receipt'] and parent.company_price_include == 'tax_included'"
                                                string="Amount"/>

@@ -427,6 +427,25 @@ class AccountMoveLine(models.Model):
         currency_field='company_currency_id',
     )
 
+    # Field to show/hide the details of the sale order lines in the report under some section
+    print_details = fields.Boolean(
+        string="Print Details",
+        default=True,
+        compute='_compute_print_details',
+        readonly=False,
+        store=True,
+        help="Show and print the sale order lines under particular section.",
+    )
+    linked_section_line_id = fields.Many2one(
+        'account.move.line',
+        string="Linked Section Line",
+        compute='_compute_linked_section_line_id',
+    )
+    has_same_taxes = fields.Boolean(
+        string="Field to determine whether all lines in section have same taxes.",
+        compute='_compute_has_same_taxes',
+    )
+
     # === Payment Fields === #
     # payment_date is the closest date to the date the aml was created between discount_date and date_maturity.
     payment_date = fields.Date(
@@ -836,13 +855,33 @@ class AccountMoveLine(models.Model):
         for line in self:
             line.sequence = seq_map.get(line.display_type, 100)
 
-    @api.depends('quantity', 'discount', 'price_unit', 'tax_ids', 'currency_id')
+    @api.depends('quantity', 'discount', 'price_unit', 'tax_ids', 'currency_id', 'sequence', 'move_id.invoice_line_ids')
     def _compute_totals(self):
         """ Compute 'price_subtotal' / 'price_total' outside of `_sync_tax_lines` because those values must be visible for the
         user on the UI with draft moves and the dynamic lines are synchronized only when saving the record.
         """
         AccountTax = self.env['account.tax']
         for line in self:
+            if line.display_type == 'line_section':
+                subtotal = 0.0
+                total = 0.0
+                section_seq = line.sequence
+
+                sorted_lines = line.move_id.invoice_line_ids.sorted(
+                    key=lambda l: l.sequence
+                ).filtered(lambda l: l.sequence > section_seq)
+
+                for sorted_line in sorted_lines:
+                    if sorted_line.display_type == 'line_section':
+                        break
+                    subtotal += sorted_line.price_subtotal
+                    total += sorted_line.price_total
+
+                line.update({
+                    'price_subtotal': subtotal,
+                    'price_total': total,
+                })
+                continue
             # TODO remove the need of cogs lines to have a price_subtotal/price_total
             if line.display_type not in ('product', 'cogs', 'non_deductible_product', 'non_deductible_product_total'):
                 line.price_total = line.price_subtotal = False
@@ -1137,6 +1176,38 @@ class AccountMoveLine(models.Model):
             'target': 'new',
             'type': 'ir.actions.act_window',
         }
+
+    def _compute_linked_section_line_id(self):
+        for line in self:
+            if line.display_type != 'line_section':
+                qualified_lines = line.move_id.line_ids.filtered(
+                    lambda l: l.display_type == 'line_section' and l.sequence < line.sequence,
+                )
+                if qualified_lines:
+                    line.linked_section_line_id = max(qualified_lines, key=lambda l: l.sequence)
+                else:
+                    line.linked_section_line_id = False
+            else:
+                line.linked_section_line_id = False
+
+    def _compute_has_same_taxes(self):
+        for line in self:
+            if line.display_type == 'line_section':
+                # Check if all lines in the section have the same taxes
+                section_lines = line.move_id.invoice_line_ids.filtered(
+                    lambda l: l.linked_section_line_id == line
+                    and l.display_type != 'line_note',
+                )
+                line.has_same_taxes = all(l.tax_ids == section_lines[0].tax_ids for l in section_lines)
+            else:
+                line.has_same_taxes = False
+
+    @api.depends('sequence', 'move_id.invoice_line_ids', 'tax_ids')
+    def _compute_print_details(self):
+        for line in self:
+            if line.display_type == 'line_section':
+                if not line.print_details and not line.has_same_taxes:
+                    line.print_details = True
 
     # -------------------------------------------------------------------------
     # SEARCH METHODS
@@ -3178,6 +3249,20 @@ class AccountMoveLine(models.Model):
             'partner_id': self.partner_id.id,
             **kwargs,
         }
+
+    def _get_section_taxes(self):
+        """Returns values for section taxes to be printed in report.
+        If lines have same taxes then we reutrn first line's tax_ids.
+        Else we return empty list.
+        """
+        self.ensure_one()
+        if self.display_type == 'line_section' and self.has_same_taxes:
+            section_lines = self.move_id.invoice_line_ids.filtered(
+                lambda l: l.linked_section_line_id == self,
+            )
+            if section_lines:
+                return ", ".join([(tax.invoice_label or tax.name) for tax in section_lines[0].tax_ids])
+        return ""
 
     # -------------------------------------------------------------------------
     # PUBLIC ACTIONS

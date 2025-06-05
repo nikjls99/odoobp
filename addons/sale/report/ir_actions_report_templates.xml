@@ -94,20 +94,33 @@
                 <tbody class="sale_tbody">
 
                     <t t-set="current_subtotal" t-value="0"/>
+                    <t t-set="show_section_details" t-value="true"/>
 
                     <t t-foreach="lines_to_report" t-as="line">
 
                         <t t-set="current_subtotal" t-value="current_subtotal + line.price_subtotal"/>
+                        <t t-if="line.display_type == 'line_section'" t-set="show_section_details" t-value="line.print_details"/>
 
                         <tr
                             t-att-class="'fw-bold o_line_section' if (
+                            (
                                 line.display_type == 'line_section'
+                                and show_section_details
+                            )
                                 or line.product_type == 'combo'
+                            )
+                            else 'o_line_section' if (
+                                line.display_type == 'line_section'
+                                and not show_section_details
                             )
                             else 'fst-italic o_line_note' if line.display_type == 'line_note'
                             else ''"
                         >
-                            <t t-if="not line.display_type and line.product_type != 'combo'">
+                            <t
+                                t-if="not line.display_type 
+                                    and line.product_type != 'combo'
+                                    and show_section_details"
+                            >
                                 <td name="td_name"><span t-field="line.name">Bacon Burger</span></td>
                                 <td name="td_quantity" class="text-end text-nowrap">
                                     <span t-field="line.product_uom_qty">3</span>
@@ -131,14 +144,37 @@
                                     <span t-field="line.price_subtotal">27.00</span>
                                 </td>
                             </t>
-                            <t t-elif="line.display_type == 'line_section' or line.product_type == 'combo'">
-                                <td name="td_section_line" colspan="99">
+                            <t
+                                t-elif="line.display_type == 'line_section'
+                                    or (line.product_type == 'combo' and show_section_details)"
+                            >
+                                <td
+                                    name="td_section_line"
+                                    t-att-colspan="3 if line.product_type != 'combo' 
+                                                and not show_section_details else 99"
+                                >
                                     <span t-field="line.name">A section title</span>
                                 </td>
+                                <t t-if="line.product_type != 'combo' and not show_section_details">
+                                <t t-set="section_taxes" t-value="line._get_section_taxes()"/>
+                                    <td
+                                        name="td_taxes"
+                                        t-if="display_taxes"
+                                        t-attf-class="text-end {{ 'text-nowrap' if len(section_taxes) &lt; 10 else '' }}"
+                                    >
+                                        <span t-out="section_taxes">Tax 15%</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span
+                                            class="oe_order_line_price_subtotal"
+                                            t-field="line.price_subtotal"
+                                        />
+                                    </td>
+                                </t>
                                 <t t-set="current_section" t-value="line"/>
                                 <t t-set="current_subtotal" t-value="0"/>
                             </t>
-                            <t t-elif="line.display_type == 'line_note'">
+                            <t t-elif="line.display_type == 'line_note' and show_section_details">
                                 <td name="td_note_line" colspan="99">
                                     <span t-field="line.name">A note, whose content usually applies to the section or product above.</span>
                                 </td>
@@ -154,7 +190,10 @@
                                     line.combo_item_id
                                     and not lines_to_report[line_index+1].combo_item_id
                                 )
-                            ) and not line.is_downpayment"
+                            )
+                            and not line.is_downpayment
+                            and show_section_details
+                            "
                         >
                             <t t-set="current_section" t-value="None"/>
                             <tr class="is-subtotal text-end">

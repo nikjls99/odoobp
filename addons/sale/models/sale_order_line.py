@@ -305,6 +305,23 @@ class SaleOrderLine(models.Model):
         string='Tax calculation rounding method', readonly=True)
     company_price_include = fields.Selection(related="company_id.account_price_include")
     sale_line_warn_msg = fields.Text(related='product_id.sale_line_warn_msg')
+    print_details = fields.Boolean(
+        string="Print Details",
+        default=True,
+        compute='_compute_print_details',
+        readonly=False,
+        store=True,
+        help="Show and print the sale order lines under particular section.",
+    )
+    linked_section_line_id = fields.Many2one(
+        'sale.order.line',
+        string="Linked Section Line",
+        compute='_compute_linked_section_line_id',
+    )
+    has_same_taxes = fields.Boolean(
+        string="Field to determine whether all lines in section have same taxes.",
+        compute='_compute_has_same_taxes',
+    )
 
     #=== COMPUTE METHODS ===#
 
@@ -770,9 +787,28 @@ class SaleOrderLine(models.Model):
         self.ensure_one()
         return self.extra_tax_data and self.extra_tax_data.get('computation_key', '').startswith('global_discount,')
 
-    @api.depends('product_uom_qty', 'discount', 'price_unit', 'tax_ids')
+    @api.depends('product_uom_qty', 'discount', 'price_unit', 'tax_ids', 'sequence', 'display_type', 'order_id.order_line')
     def _compute_amount(self):
         for line in self:
+            if line.display_type == 'line_section':
+                subtotal = 0.0
+                total = 0.0
+                section_seq = line.sequence
+
+                sorted_lines = line.order_id.order_line.sorted(key=lambda l: l.sequence).filtered(lambda l: l.sequence > section_seq)
+
+                for l in sorted_lines:
+                    if l.display_type == 'line_section':
+                        break
+                    subtotal += l.price_subtotal
+                    total += l.price_total
+
+                line.update({
+                    'price_subtotal': subtotal,
+                    'price_total': total,
+                    'price_tax': total - subtotal,
+                })
+                continue
             base_line = line._prepare_base_line_for_taxes_computation()
             self.env['account.tax']._add_tax_details_in_base_line(base_line, line.company_id)
             line.price_subtotal = base_line['tax_details']['raw_total_excluded_currency']
@@ -1117,6 +1153,39 @@ class SaleOrderLine(models.Model):
             # line.ids checks whether it's a new record not yet saved
             line.product_uom_readonly = line.ids and line.state in ['sale', 'cancel']
 
+    def _compute_linked_section_line_id(self):
+        for line in self:
+            if line.display_type != 'line_section':
+                qualified_lines = line.order_id.order_line.filtered(
+                    lambda l: l.display_type == 'line_section' and l.sequence < line.sequence,
+                )
+                if qualified_lines:
+                    line.linked_section_line_id = max(qualified_lines, key=lambda l: l.sequence)
+                else:
+                    line.linked_section_line_id = False
+            else:
+                line.linked_section_line_id = False
+
+    def _compute_has_same_taxes(self):
+        for line in self:
+            if line.display_type == 'line_section':
+                # Check if all lines in the section have the same taxes
+                section_lines = line.order_id.order_line.filtered(
+                    lambda l: l.linked_section_line_id == line
+                    and l.display_type != "line_note"
+                    and l.product_id.type != "combo",
+                )
+                line.has_same_taxes = all(l.tax_ids == section_lines[0].tax_ids for l in section_lines)
+            else:
+                line.has_same_taxes = False
+
+    @api.depends('sequence', 'order_id.order_line', 'tax_ids')
+    def _compute_print_details(self):
+        for line in self:
+            if line.display_type == 'line_section' and line.product_id.type != 'combo':
+                if not line.print_details and not line.has_same_taxes:
+                    line.print_details = True
+
     #=== CONSTRAINT METHODS ===#
 
     @api.constrains('combo_item_id')
@@ -1373,6 +1442,22 @@ class SaleOrderLine(models.Model):
             for l in self.invoice_lines
             if l.move_id.state == 'posted' and l.move_id not in invoices  # don't recompute with the final invoice
         )
+
+    def _get_section_taxes(self):
+        """Returns values for section taxes to bew printed in report.
+        If lines have same taxes then we reutrn first line's tax_ids.
+        Else we return empty list.
+        """
+        self.ensure_one()
+        if self.display_type == 'line_section' and self.has_same_taxes:
+            section_lines = self.order_id.order_line.filtered(
+                lambda l: l.linked_section_line_id == self
+                and l.display_type != "line_note"
+                and l.product_id.type != "combo",
+            )
+            if section_lines:
+                return ", ".join([(tax.invoice_label or tax.name) for tax in section_lines[0].tax_ids])
+        return ""
 
     #=== CORE METHODS OVERRIDES ===#
 
