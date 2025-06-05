@@ -401,7 +401,12 @@ export class WebsiteBuilder extends Component {
         this.setIframeLoaded();
         this.websiteService.websiteRootInstance = undefined;
         if (url) {
-            this.websiteContent.el.contentWindow.location = encodeURIComponent(url);
+            const urlObj = new URL(url);
+            const pathSegments = urlObj.pathname.split("/").map(segment =>
+                segment ? encodeURIComponent(segment) : segment
+            );
+            const encodedPath = pathSegments.join("/");
+            this.websiteContent.el.contentWindow.location.href = this.websiteContent.el.contentWindow.location.origin + encodedPath;
         } else {
             this.websiteContent.el.contentWindow.location.reload();
         }
