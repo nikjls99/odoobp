@@ -406,26 +406,11 @@ function useReloadAction(getAllActions) {
     return { reload };
 }
 
-export function useHasPreview(getAllActions) {
+export function useHasPreview() {
     const comp = useComponent();
-    const reload = useReloadAction(getAllActions).reload;
-    const getAction = comp.env.editor.shared.builderActions.getAction;
-
-    let hasPreview = true;
-    for (const descr of getAllActions()) {
-        if (descr.actionId) {
-            const action = getAction(descr.actionId);
-            if (action.preview === false) {
-                hasPreview = false;
-            }
-        }
-    }
-
     return (
-        hasPreview &&
-        !reload &&
-        (comp.props.preview === true ||
-            (comp.props.preview === undefined && comp.env.weContext.preview !== false))
+        comp.props.preview === true ||
+        (comp.props.preview === undefined && comp.env.weContext.preview !== false)
     );
 }
 
@@ -458,7 +443,7 @@ export function useClickableBuilderComponent() {
     const inheritedActionIds =
         comp.props.inheritedActions || comp.env.weContext.inheritedActions || [];
 
-    const hasPreview = useHasPreview(getAllActions);
+    const hasPreview = useHasPreview();
     const operationWithReload = useOperationWithReload(callApply, reload);
 
     const withLoadingEffect = useWithLoadingEffect(getAllActions);
@@ -657,7 +642,7 @@ export function useInputBuilderComponent({
         return rawValue !== undefined ? formatRawValue(rawValue) : "";
     }
 
-    const shouldPreview = useHasPreview(getAllActions);
+    const shouldPreview = useHasPreview();
     function preview(userInputValue) {
         if (shouldPreview) {
             callOperation(applyOperation.preview, {
@@ -766,6 +751,10 @@ export const clickableBuilderComponentProps = {
     inheritedActions: { type: Array, element: String, optional: true },
 };
 
+export function isActionPreviewable(action) {
+    return action.preview !== false && !action.reload;
+}
+
 export function getAllActionsAndOperations(comp) {
     const inheritedActionIds =
         comp.props.inheritedActions || comp.env.weContext.inheritedActions || [];
@@ -788,6 +777,7 @@ export function getAllActionsAndOperations(comp) {
                     clean: action.clean,
                     load: action.load,
                     loadOnClean: action.loadOnClean,
+                    isPreviewable: isActionPreviewable(action),
                 });
             }
         }
@@ -844,7 +834,13 @@ export function getAllActionsAndOperations(comp) {
         return actions.concat(inheritedActions || []);
     }
     function callOperation(fn, params = {}) {
-        const actionsSpecs = getActionsSpecs(getAllActions(), params.userInputValue);
+        let actionsSpecs = getActionsSpecs(getAllActions(), params.userInputValue);
+
+        const isPreview = !!params.operationParams?.cancellable;
+        if (isPreview) {
+            actionsSpecs = actionsSpecs.filter((actionSpec) => actionSpec.isPreviewable);
+        }
+
         comp.env.editor.shared.operation.next(() => fn(actionsSpecs), {
             load: async () =>
                 Promise.all(

@@ -70,7 +70,7 @@ export function useColorPickerBuilderComponent() {
             },
         });
     };
-    const hasPreview = useHasPreview(getAllActions);
+    const hasPreview = useHasPreview();
     if (!hasPreview) {
         onPreview = () => {};
     }

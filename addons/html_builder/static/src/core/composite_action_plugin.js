@@ -1,9 +1,9 @@
-import { convertParamToObject } from "@html_builder/core/utils";
+import { convertParamToObject, isActionPreviewable } from "@html_builder/core/utils";
 import { Plugin } from "@html_editor/plugin";
 
 export class CompositeActionPlugin extends Plugin {
     static id = "compositeAction";
-    static dependencies = ["builderActions"];
+    static dependencies = ["builderActions", "history"];
 
     compositeAction = {
         prepare: async ({ actionParam: { mainParam: actions }, actionValue }) => {
@@ -70,11 +70,12 @@ export class CompositeActionPlugin extends Plugin {
             return results.every((result) => result);
         },
         load: async ({ editingElement, params: { mainParam: actions }, value }) => {
+            const isPreviewing = this.dependencies.history.getIsPreviewing();
             const loadActions = [];
             const loadResults = [];
             for (const actionDef of actions) {
                 const action = this.dependencies.builderActions.getAction(actionDef.action);
-                if (action.load) {
+                if (action.load && (!isPreviewing || isActionPreviewable(action))) {
                     const actionDescr = this.getActionDescription({
                         editingElement,
                         ...actionDef,
@@ -101,9 +102,10 @@ export class CompositeActionPlugin extends Plugin {
             dependencyManager,
             selectableContext,
         }) => {
+            const isPreviewing = this.dependencies.history.getIsPreviewing();
             for (const actionDef of actions) {
                 const action = this.dependencies.builderActions.getAction(actionDef.action);
-                if (action.apply) {
+                if (action.apply && (!isPreviewing || isActionPreviewable(action))) {
                     const actionDescr = this.getActionDescription({
                         editingElement,
                         value,
@@ -126,6 +128,7 @@ export class CompositeActionPlugin extends Plugin {
             selectableContext,
             nextAction,
         }) => {
+            const isPreviewing = this.dependencies.history.getIsPreviewing();
             for (const actionDef of actions) {
                 const action = this.dependencies.builderActions.getAction(actionDef.action);
                 const actionDescr = this.getActionDescription({
@@ -137,14 +140,15 @@ export class CompositeActionPlugin extends Plugin {
                     selectableContext,
                     nextAction,
                 });
-
-                if (action.clean) {
-                    action.clean(actionDescr);
-                } else if (action.apply) {
-                    if (loadResult && loadResult[actionDef.action]) {
-                        actionDescr.loadResult = loadResult[actionDef.action];
+                if (!isPreviewing || isActionPreviewable(action)) {
+                    if (action.clean) {
+                        action.clean(actionDescr);
+                    } else if (action.apply) {
+                        if (loadResult && loadResult[actionDef.action]) {
+                            actionDescr.loadResult = loadResult[actionDef.action];
+                        }
+                        action.apply(actionDescr);
                     }
-                    action.apply(actionDescr);
                 }
             }
         },
