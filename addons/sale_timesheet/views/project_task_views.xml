@@ -13,7 +13,7 @@
                 <attribute name="context">{'create_for_project_id': id, 'default_project_id': id, 'default_partner_id': partner_id}</attribute>
             </xpath>
             <xpath expr="//page[@name='settings']" position="after">
-                <page name="billing_employee_rate" string="Invoicing" invisible="not allow_billable or not partner_id">
+                <page name="billing_employee_rate" string="Invoicing" invisible="not allow_billable or not partner_id or is_template">
                     <field name="sale_line_employee_ids" mode="list,kanban" context="{'default_sale_line_id': sale_line_id}">
                         <list editable="bottom">
                             <field name="company_id" column_invisible="True"/>

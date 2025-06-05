@@ -908,3 +908,28 @@ class ProjectProject(models.Model):
             action_window['views'] = [[False, 'form']]
             action_window['res_id'] = vendor_bill_ids[0]
         return action_window
+
+    def _fetch_products_linked_to_project(self):
+        self.ensure_one()
+        return self.env['product.template'].search_count(['|', ('project_id', '=', self.id), ('project_template_id', '=', self.id)], limit=1)
+
+    def _get_project_to_template_warnings(self):
+        res = super()._get_project_to_template_warnings()
+        product_linked_count = self._fetch_products_linked_to_project()
+        if product_linked_count:
+            res.append(self.env._("This project is currently linked to a product."))
+        return res
+
+    def _get_template_to_project_warnings(self):
+        self.ensure_one()
+        res = super()._get_template_to_project_warnings()
+        product_linked_count = self._fetch_products_linked_to_project()
+        if product_linked_count:
+            res.append(self.env._("This template is linked to a product."))
+        return res
+
+    def _get_template_default_context_whitelist(self):
+        return [
+            *super()._get_template_default_context_whitelist(),
+            'allow_billable',
+        ]
