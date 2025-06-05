@@ -48,40 +48,19 @@ export class TableOfContentManager {
     }
 
     updateStructure() {
-        let currentDepthByTag = {};
-        let previousTag;
-        let previousDepth = -1;
+        const tagByDepth = [];
         const container = this.getContainerEl();
         if (!container) {
             return;
         }
         this.structure.headings = this.fetchValidHeadings(container).map((heading) => {
-            let depth = HEADINGS.indexOf(heading.tagName);
-            if (depth !== previousDepth && heading.tagName === previousTag) {
-                depth = previousDepth;
-            } else if (depth > previousDepth) {
-                if (heading.tagName !== previousTag && HEADINGS.indexOf(previousTag) < depth) {
-                    depth = previousDepth + 1;
-                } else {
-                    depth = previousDepth;
-                }
-            } else if (depth < previousDepth) {
-                if (currentDepthByTag.hasOwnProperty(heading.tagName)) {
-                    depth = currentDepthByTag[heading.tagName];
-                }
+            while (tagByDepth.at(-1) >= heading.tagName) {
+                tagByDepth.pop();
             }
-
-            previousTag = heading.tagName;
-            previousDepth = depth;
-
-            // going back to 0 depth, wipe-out the 'currentDepthByTag'
-            if (depth === 0) {
-                currentDepthByTag = {};
-            }
-            currentDepthByTag[heading.tagName] = depth;
-
+            const depth = tagByDepth.length;
+            tagByDepth.push(heading.tagName);
             return {
-                depth: depth,
+                depth,
                 name: heading.innerText,
                 target: heading,
             };
