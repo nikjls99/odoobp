@@ -712,6 +712,7 @@ export class PropertiesField extends Component {
             type: "char",
             definition_changed: true,
         });
+        this.initialValues[newName] = { name: newName, type: "char" };
         this.openPropertyDefinition = newName;
         this.props.record.update({ [this.props.name]: propertiesDefinitions });
     }
@@ -857,7 +858,10 @@ export class PropertiesField extends Component {
             // and the python field will just ignore the old value.
             // Store the new generated name to be able to restore it
             // if needed.
-            const newName = this.generatePropertyName();
+            let newName = this.generatePropertyName();
+            if (propertyDefinition.type === "html") {
+                newName = `${newName}_html`;
+            }
             this.initialValues[newName] = initialValues;
             propertyDefinition.name = newName;
         }
@@ -954,6 +958,7 @@ export class PropertiesField extends Component {
             isNewlyCreated: isNewlyCreated,
             propertyIndex: propertyIndex,
             propertiesSize: propertiesList.length,
+            record: this.props.record,
             ...this.additionalPropertyDefinitionProps,
         });
     }
