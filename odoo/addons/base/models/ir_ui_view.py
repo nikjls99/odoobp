@@ -482,7 +482,13 @@ actual arch.
                     try:
                         if not values.get('arch') and not values.get('arch_base'):
                             raise ValidationError(_('Missing view architecture.'))
-                        values['type'] = etree.fromstring(values.get('arch') or values.get('arch_base')).tag
+                        text = values.get('arch_base')
+                        if isinstance(text, str) and re.search(r'<\?xml[^>]*encoding=.*?\?>', text, re.IGNORECASE):
+                            raise UserError(_(
+                                "Unicode strings with encoding declaration are not supported in XML.\n"
+                                "Remove the encoding declaration."
+                            ))
+                        values['type'] = etree.fromstring(values.get('arch') or text).tag
                     except LxmlError:
                         # don't raise here, the constraint that runs `self._check_xml` will
                         # do the job properly.
