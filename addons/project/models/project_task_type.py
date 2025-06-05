@@ -17,7 +17,7 @@ class ProjectTaskType(models.Model):
         return [default_project_id] if default_project_id else None
 
     def _default_user_id(self):
-        return not self.env.context.get('default_project_id', False) and self.env.uid
+        return not self.env.context.get('from_task_type_form') and not self.env.context.get('default_project_id', False) and self.env.uid
 
     active = fields.Boolean('Active', default=True)
     name = fields.Char(string='Name', required=True, translate=True)
