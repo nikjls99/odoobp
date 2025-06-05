@@ -3,13 +3,14 @@ import { registry } from "@web/core/registry";
 
 class PopupVisibilityPlugin extends Plugin {
     static id = "popupVisibilityPlugin";
-    static dependencies = ["visibility"];
+    static dependencies = ["visibility", "history"];
     static shared = ["onTargetShow", "onTargetHide"];
 
     resources = {
         target_show: this.onTargetShow.bind(this),
         target_hide: this.onTargetHide.bind(this),
         clean_for_save_handlers: this.cleanForSave.bind(this),
+        selectionchange_handlers: this.invisibleWithoutSelection.bind(this),
     };
 
     setup() {
@@ -25,18 +26,33 @@ class PopupVisibilityPlugin extends Plugin {
         });
     }
 
+    get Modal() {
+        const historyPlugin = this.dependencies.history;
+        return class extends this.window.Modal {
+            _hideModal() {
+                historyPlugin.ignoreDOMMutations(() => {
+                    super._hideModal();
+                });
+            }
+        };
+    }
+
     onTargetShow(target) {
         // Check if the popup is within the editable, because it is cloned on
         // save (see save plugin) and Bootstrap moves it if it is not within the
         // document (see Bootstrap Modal's _showElement).
         if (target.matches(".s_popup") && this.editable.contains(target)) {
-            this.window.Modal.getOrCreateInstance(target.querySelector(".modal")).show();
+            this.dependencies.history.ignoreDOMMutations(() => {
+                this.Modal.getOrCreateInstance(target.querySelector(".modal")).show();
+            });
         }
     }
 
     onTargetHide(target) {
         if (target.matches(".s_popup")) {
-            this.window.Modal.getOrCreateInstance(target.querySelector(".modal")).hide();
+            this.dependencies.history.ignoreDOMMutations(() => {
+                this.Modal.getOrCreateInstance(target.querySelector(".modal")).hide();
+            });
         }
     }
 
@@ -46,8 +62,21 @@ class PopupVisibilityPlugin extends Plugin {
             // Do not call .hide() directly, because it is queued whereas
             // .dispose() is not.
             modalEl.classList.remove("show");
-            this.window.Modal.getOrCreateInstance(modalEl)._hideModal();
-            this.window.Modal.getInstance(modalEl).dispose();
+            this.Modal.getOrCreateInstance(modalEl)._hideModal();
+            this.Modal.getInstance(modalEl).dispose();
+        }
+    }
+
+    invisibleWithoutSelection(selectionData) {
+        const selectionContainer = selectionData.documentSelection?.commonAncestorContainer;
+        if (!selectionContainer) {
+            return;
+        }
+        for (const popupEl of this.editable.querySelectorAll(".s_popup:not([data-invisible])")) {
+            if (!popupEl.contains(selectionContainer)) {
+                this.onTargetHide(popupEl);
+                this.dependencies.visibility.onOptionVisibilityUpdate(popupEl, false);
+            }
         }
     }
 }

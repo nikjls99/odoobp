@@ -2,10 +2,11 @@ import { Plugin } from "@html_editor/plugin";
 import { isMobileView } from "@html_builder/utils/utils";
 import { registry } from "@web/core/registry";
 import { withSequence } from "@html_editor/utils/resource";
+import { closestElement, selectElements } from "@html_editor/utils/dom_traversal";
 
 export class VisibilityPlugin extends Plugin {
     static id = "visibility";
-    static dependencies = ["builder-options", "disableSnippets"];
+    static dependencies = ["builder-options", "disableSnippets", "history"];
     static shared = [
         "toggleTargetVisibility",
         "cleanForSaveVisibility",
@@ -15,6 +16,8 @@ export class VisibilityPlugin extends Plugin {
         on_mobile_preview_clicked: withSequence(10, this.onMobilePreviewClicked.bind(this)),
         system_attributes: ["data-invisible"],
         system_classes: ["o_snippet_override_invisible"],
+        selectionchange_handlers: this.ensureSelectionVisible.bind(this),
+        normalize_handlers: this.removeUselessVisibilityOverride.bind(this),
     };
 
     setup() {
@@ -36,6 +39,37 @@ export class VisibilityPlugin extends Plugin {
             });
     }
 
+    ensureSelectionVisible(selectionData) {
+        const container = selectionData.documentSelection?.commonAncestorContainer;
+        if (!container) {
+            return;
+        }
+        const hiddenEl = closestElement(container, "[data-invisible='1']");
+        if (hiddenEl) {
+            this.toggleTargetVisibility(hiddenEl, true);
+            this.config.updateInvisibleElementsPanel();
+        }
+    }
+
+    removeUselessVisibilityOverride(editingEl) {
+        for (const el of selectElements(
+            editingEl,
+            ".o_snippet_override_invisible:not(.o_snippet_invisible):not(.o_snippet_mobile_invisible):not(.o_snippet_desktop_invisible)"
+        )) {
+            const alwaysInvisible = el.classList.contains("o_snippet_invisible");
+            const mobileInvisible = el.classList.contains("o_snippet_mobile_invisible");
+            this.dependencies.history.applyCustomMutation({
+                apply: () => {
+                    el.classList.remove("o_snippet_override_invisible");
+                },
+                revert: () => {
+                    if (alwaysInvisible || mobileInvisible === isMobileView(el)) {
+                        el.classList.add("o_snippet_override_invisible");
+                    }
+                },
+            });
+        }
+    }
     cleanForSaveVisibility(editingEl) {
         const show =
             !editingEl.classList.contains("o_snippet_invisible") &&
