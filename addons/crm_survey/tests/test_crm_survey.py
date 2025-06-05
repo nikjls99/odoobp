@@ -86,13 +86,13 @@ class TestCrmSurvey(common.TestSurveyCommon, MockEmail, HttpCase):
                 constr_mandatory=True, constr_error_msg='Please select an answer', survey_id=survey.id,
                 )
 
-            self.assertFalse(q01.is_lead_generating)
-            self.assertTrue(q02.is_lead_generating)
-            self.assertTrue(q03.is_lead_generating)
-            self.assertFalse(q04.is_lead_generating)
-            self.assertFalse(q05.is_lead_generating)
+        self.assertFalse(q01.is_lead_generating)
+        self.assertTrue(q02.is_lead_generating)
+        self.assertTrue(q03.is_lead_generating)
+        self.assertFalse(q04.is_lead_generating)
+        self.assertFalse(q05.is_lead_generating)
 
-            return survey
+        return survey
 
     def test_connected_account_access_with_lead_generation_answer(self):
         # Step 1 : Connected access + lead generation
