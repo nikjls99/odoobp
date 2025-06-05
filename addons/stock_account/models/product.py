@@ -449,7 +449,7 @@ class ProductProduct(models.Model):
                     qty_taken_on_candidate = min(candidate.remaining_qty, qty_to_take_on_candidates)
                     qty_taken_on_candidates += qty_taken_on_candidate
 
-                    candidate_unit_cost = candidate.remaining_value / candidate.remaining_qty
+                    candidate_unit_cost = candidate.currency_id.round(candidate.remaining_value / candidate.remaining_qty)
                     value_taken_on_candidate = qty_taken_on_candidate * candidate_unit_cost
                     value_taken_on_candidate = candidate.currency_id.round(value_taken_on_candidate)
                     new_remaining_value = candidate.remaining_value - value_taken_on_candidate
