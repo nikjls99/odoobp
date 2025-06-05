@@ -294,7 +294,9 @@ export class Colibri {
                     if (Object.prototype.isPrototypeOf.call(Component, value)) {
                         this.mountComponent(nodes, value);
                     } else {
-                        this.mountComponent(nodes, ...value());
+                        for (const node of nodes) {
+                            this.mountComponent([node], ...value(node));
+                        }
                     }
                 } else {
                     const suffix = directive.startsWith("t-") ? "" : " (should start with t-)";
