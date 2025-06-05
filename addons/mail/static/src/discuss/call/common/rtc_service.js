@@ -349,6 +349,8 @@ export class Rtc extends Record {
             audioTrack: undefined,
             cameraTrack: undefined,
             screenTrack: undefined,
+            frontFacingMode: true,
+            lastFacingMode: undefined,
             /**
              * callback to properly end the audio monitoring.
              * If set it indicates that we are currently monitoring the local
@@ -661,6 +663,11 @@ export class Rtc extends Record {
         if (!isActiveCall) {
             await this.joinCall(channel, { audio, camera });
         }
+    }
+
+    async toggleCameraFacingMode() {
+        this.state.frontFacingMode = !this.state.frontFacingMode;
+        await this.toggleVideo("camera", true);
     }
 
     async toggleDeafen() {
@@ -1700,12 +1707,22 @@ export class Rtc extends Record {
         let sourceStream;
         try {
             if (type === "camera") {
-                if (this.state.sourceCameraStream) {
+                if (
+                    this.state.sourceCameraStream &&
+                    this.state.lastFacingMode === this.state.frontFacingMode
+                ) {
                     sourceStream = this.state.sourceCameraStream;
                 } else {
+                    if (this.state.sourceCameraStream) {
+                        stopVideo();
+                    }
                     sourceStream = await browser.navigator.mediaDevices.getUserMedia({
-                        video: CAMERA_CONFIG,
+                        video: {
+                            ...CAMERA_CONFIG,
+                            facingMode: this.state.frontFacingMode ? "user" : "environment",
+                        },
                     });
+                    this.state.lastFacingMode = this.state.frontFacingMode;
                 }
             }
             if (type === "screen") {

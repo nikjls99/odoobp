@@ -26,7 +26,8 @@ callActionsRegistry
         activeClass: "text-danger",
         hotkey: "shift+d",
         select: (component) => component.rtc.toggleDeafen(),
-        sequence: 20,
+        sequence: (component) =>
+            isMobileOS() && component.rtc.selfSession?.is_camera_on ? 40 : 20,
     })
     .add("camera-on", {
         condition: (component) => component.rtc,
@@ -44,6 +45,14 @@ callActionsRegistry
         activeClass: "text-success",
         select: (component) => component.rtc.toggleVideo("camera"),
         sequence: 30,
+    })
+    .add("switch camera", {
+        condition: (component) => isMobileOS() && component.rtc.selfSession?.is_camera_on,
+        name: () => _t("Switch camera"),
+        isActive: () => false,
+        icon: "fa-refresh",
+        select: (component) => component.rtc.toggleCameraFacingMode(),
+        sequence: 20,
     })
     .add("raise-hand", {
         condition: (component) => component.rtc,
