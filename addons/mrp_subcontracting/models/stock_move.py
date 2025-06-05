@@ -59,8 +59,8 @@ class StockMove(models.Model):
         return res
 
     def _compute_picked(self):
-       subcontracted_moves = self.filtered(lambda m: m.is_subcontract)
-       super(StockMove, self - subcontracted_moves)._compute_picked()
+        subcontracted_moves = self.filtered(lambda m: m.is_subcontract and m.product_uom_qty != m.quantity)
+        super(StockMove, self - subcontracted_moves)._compute_picked()
 
     def _set_quantity_done(self, qty):
         to_set_moves = self
