@@ -1283,10 +1283,24 @@
                                             <field name="invoice_payments_widget" colspan="2" nolabel="1" widget="payment"/>
                                             <field name="amount_residual" class="oe_subtotal_footer_separator"/>
                                         </group>
+<<<<<<< cf3b9857aeaf2c7ac895376106821ebb1fc9e695
                                         <field name="invoice_outstanding_credits_debits_widget"
                                             class="oe_invoice_outstanding_credits_debits py-3"
                                             colspan="2" nolabel="1" widget="payment"
                                             invisible="not invoice_has_outstanding"/>
+||||||| 3a1b6675342f5f59e39aa222d0b7089df0d23d87
+                                        <field name="invoice_outstanding_credits_debits_widget"
+                                            class="oe_invoice_outstanding_credits_debits py-3"
+                                            colspan="2" nolabel="1" widget="payment"
+                                            invisible="state != 'posted' or not invoice_has_outstanding"/>
+=======
+                                        <group class="oe_subtotal_footer px-4">
+                                            <field name="invoice_outstanding_credits_debits_widget"
+                                                class="oe_invoice_outstanding_credits_debits py-3"
+                                                colspan="2" nolabel="1" widget="payment"
+                                                invisible="state != 'posted' or not invoice_has_outstanding"/>
+                                        </group>
+>>>>>>> bd0170174cb1706daa878c0b456c6c95f6252912
                                     </group>
                                 </group>
                             </page>
