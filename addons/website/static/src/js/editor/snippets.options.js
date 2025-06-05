@@ -1891,7 +1891,7 @@ options.registry.Carousel = options.Class.extend({
                     activeIndicatorEl.setAttribute("aria-current", "true");
 
                     this.trigger_up("activate_snippet", {
-                        $snippet: $activeSlide,
+                        $snippet: this.$target,
                         ifInactiveOptions: true,
                     });
                     this.$bsTarget.trigger("active_slide_targeted"); // TODO remove in master: kept for compatibility.
