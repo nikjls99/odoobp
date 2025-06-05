@@ -14,7 +14,7 @@ from collections import defaultdict
 from random import randint
 from werkzeug import urls
 
-from odoo import api, fields, models, tools, _, Command
+from odoo import api, fields, models, tools, _
 from odoo.exceptions import RedirectWarning, UserError, ValidationError
 
 import typing
@@ -298,7 +298,7 @@ class ResPartner(models.Model):
         recursive=True, index=True)
     commercial_company_name = fields.Char('Company Name Entity', compute='_compute_commercial_company_name',
                                           store=True)
-    company_name = fields.Char('Company Name')
+    company_name = fields.Char("Company Name", compute='_compute_company_name', store=True)
     barcode = fields.Char(help="Use a barcode to identify this contact.", copy=False, company_dependent=True)
 
     # hack to allow using plain browse record in qweb views, and used in ir.qweb.field.contact
@@ -344,6 +344,11 @@ class ResPartner(models.Model):
     @api.depends('name', 'user_ids.share', 'image_128', 'is_company', 'type')
     def _compute_avatar_128(self):
         super()._compute_avatar_128()
+
+    @api.depends('parent_id')
+    def _compute_company_name(self):
+        for partner in self:
+            partner.company_name = partner.parent_id.name
 
     def _compute_avatar(self, avatar_field, image_field):
         partners_with_internal_user = self.filtered(
@@ -957,20 +962,6 @@ class ResPartner(models.Model):
             partner._children_sync(vals)
             partner._handle_first_contact_creation()
         return partners
-
-    def create_company(self):
-        self.ensure_one()
-        if self.company_name:
-            # Create parent company
-            values = dict(name=self.company_name, is_company=True, vat=self.vat)
-            values.update(self._convert_fields_to_values(self._address_fields()))
-            new_company = self.create(values)
-            # Set new company as my parent
-            self.write({
-                'parent_id': new_company.id,
-                'child_ids': [Command.update(partner_id, dict(parent_id=new_company.id)) for partner_id in self.child_ids.ids]
-            })
-        return True
 
     def open_commercial_entity(self):
         """ Utility method used to add an "Open Company" button in partner views """

@@ -1,7 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, models
-from odoo.fields import Domain
+from odoo.fields import Command, Domain
 
 
 class ResPartner(models.Model):
@@ -18,8 +18,23 @@ class ResPartner(models.Model):
             'zipcode', 'vat', 'company_name',
         }
 
-    def _can_edit_name(self):
-        """ Name can be changed more often than the VAT """
+    def _create_company(self, company_name):
+        self.ensure_one()
+        # Create parent company
+        values = dict(name=company_name, is_company=True, vat=self.vat)
+        values.update(self._convert_fields_to_values(self._address_fields()))
+        new_company = self.create(values)
+        # Set new company as my parent
+        self.write({
+            'parent_id': new_company.id,
+            'child_ids': [
+                Command.update(partner_id, dict(parent_id=new_company.id))
+                for partner_id in self.child_ids.ids
+            ],
+        })
+        return True
+
+    def can_edit_country(self):
         self.ensure_one()
         return True
 
@@ -28,7 +43,7 @@ class ResPartner(models.Model):
         entity) and the children. Only the commercial entity should be able to
         edit it (as in backend)."""
         self.ensure_one()
-        return not self.parent_id
+        return True
 
     def _can_be_edited_by_current_customer(self, **kwargs):
         """Return whether partner can be edited by current user."""

@@ -157,12 +157,7 @@
                                 string="Company"
                                 domain="[('is_company', '=', True)]"
                                 context="{'default_is_company': True, 'default_user_id': user_id}"
-                                invisible="((is_company and not parent_id) or company_name) and company_name != ''"/>
-                            <div colspan="2" class="d-flex gap-2" invisible="not company_name or company_name == '' or is_company">
-                                <label for="company_name" class="fw-bold text-nowrap"/>
-                                <field name="company_name"/>
-                                <button name="create_company" icon="fa-plus-square" string="Create" type="object" class="oe_edit_only btn-link text-nowrap"/>
-                            </div>
+                                invisible="is_company and not parent_id"/>
                             <span class="o_form_label o_td_label o_address_type" name="address_name">
                                 <field name="type_address_label" invisible="is_company" readonly="1" class="fw-bold"/>
                                 <span invisible="not is_company">Address</span>
