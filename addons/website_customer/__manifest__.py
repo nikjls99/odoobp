@@ -24,6 +24,11 @@ Publish your customers as business references on your website to attract new pot
         'security/ir_rule.xml',
         'views/snippets.xml',
     ],
+    'assets': {
+        'web.assets_tests': [
+            'website_customer/static/tests/tours/customer_filter_with_tag.js',
+        ]
+    },
     'installable': True,
     'author': 'Odoo S.A.',
     'license': 'LGPL-3',
