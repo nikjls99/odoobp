@@ -6,13 +6,14 @@ from unittest.mock import patch
 import io
 import requests
 
+from odoo.addons.base.tests.common import HttpCaseWithUserDemo
 from odoo.addons.mail.tests.common import MailCommon
 from odoo.addons.mail.tools import link_preview
 from odoo.tests.common import tagged
 
 
 @tagged("mail_link_preview", "mail_message", "post_install", "-at_install")
-class TestLinkPreview(MailCommon):
+class TestLinkPreview(MailCommon, HttpCaseWithUserDemo):
 
     @classmethod
     def setUpClass(cls):
@@ -278,3 +279,22 @@ class TestLinkPreview(MailCommon):
                 [("link_preview_id", "=", link_preview.id)]
             )
             self.assertEqual(link_preview_count, 1)
+
+    def test_remove_link_preview(self):
+        with (
+            patch.object(requests.Session, "get", self._patch_with_og_properties),
+            patch.object(requests.Session, "head", self._patch_head_html),
+        ):
+            message = self.test_partner.message_post(
+                body=Markup('<a href="%s">Nothing link</a>') % self.source_url,
+            )
+            self.env["mail.link.preview"]._create_from_message_and_notify(message)
+            message = self.test_partner.with_user(self.user_demo).message_post(
+                body=Markup('<a href="%s">Nothing link</a>') % self.source_url,
+            )
+            self.env["mail.link.preview"]._create_from_message_and_notify(message)
+            self.start_tour(
+                f"/odoo/res.partner/{self.test_partner.id}",
+                "test_mail_link_preview",
+                login=self.user_demo.login
+            )
