@@ -872,6 +872,11 @@ class ResPartner(models.Model):
         if 'is_company' in vals and not self.env.su and self.env.user.has_group('base.group_partner_manager'):
             result = super(ResPartner, self.sudo()).write({'is_company': vals.get('is_company')})
             del vals['is_company']
+
+        if vals.get('bank_ids'):
+            banks = self.env['res.partner.bank'].browse([bank_id[2] if bank_id[0] == Command.SET else bank_id[1] for bank_id in vals['bank_ids']])
+            banks.action_unarchive()
+
         result = result and super().write(vals)
         for partner, pre_values in zip(self, pre_values_list, strict=True):
             if any(u._is_internal() for u in partner.user_ids if u != self.env.user):

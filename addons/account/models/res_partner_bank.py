@@ -253,18 +253,36 @@ class ResPartnerBank(models.Model):
                 # force the allow_out_payment field to False in order to prevent scam payments on newly created bank accounts
                 vals['allow_out_payment'] = False
 
+        to_create = []
+        res = []
         for vals in vals_list:
             if (partner_id := vals.get('partner_id')) and (acc_number := vals.get('acc_number')):
-                archived_res_partner_bank = self.env['res.partner.bank'].search([('active', '=', False), ('partner_id', '=', partner_id), ('acc_number', '=', acc_number)])
-                if archived_res_partner_bank:
-                    raise UserError(_("A bank account with Account Number %(number)s already exists for Partner %(partner)s, but is archived. Please unarchive it instead.", number=acc_number, partner=archived_res_partner_bank.partner_id.name))
+                archived_bank = self.env['res.partner.bank'].search([
+                    ('active', '=', False),
+                    ('partner_id', '=', partner_id),
+                    ('acc_number', '=', acc_number)
+                ])
+                if archived_bank:
+                    archived_bank.action_unarchive()
+                    res.append(archived_bank)
+                    continue
+            to_create.append(vals)
+            res.append(None)  # Placeholder for created record
 
-        res = super().create(vals_list)
-        res._check_allow_out_payment()
-        for account in res:
+        created = super().create(to_create)
+        created._check_allow_out_payment()
+
+        for account in created:
             msg = _("Bank Account %s created", account._get_html_link(title=f"#{account.id}"))
             account.partner_id._message_log(body=msg)
-        return res
+
+        created_idx = 0
+        for i in range(len(res)):
+            if res[i] is None:
+                res[i] = created[created_idx]
+                created_idx += 1
+
+        return self.env['res.partner.bank'].concat(*res)
 
     def write(self, vals):
         # EXTENDS base res.partner.bank
