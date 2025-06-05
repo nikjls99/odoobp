@@ -521,3 +521,9 @@ class PaymentProvider(models.Model):
         if self.code != 'stripe':
             return default_codes
         return const.DEFAULT_PAYMENT_METHODS_CODES
+
+    @api.model
+    def pformat(self, values, provider_code=None):
+        if provider_code == 'stripe' or 'stripe' in self.mapped('code'):
+            values = stripe_utils.scrub_secret_values(values)
+        return super().pformat(values, provider_code)

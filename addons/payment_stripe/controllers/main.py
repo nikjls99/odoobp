@@ -3,7 +3,6 @@
 import hashlib
 import hmac
 import logging
-import pprint
 from datetime import datetime
 
 from werkzeug.exceptions import Forbidden
@@ -49,7 +48,7 @@ class StripeController(http.Controller):
                 payload={'expand[]': 'payment_method'},  # Expand all required objects.
                 method='GET',
             )
-            _logger.info("Received payment_intents response:\n%s", pprint.pformat(payment_intent))
+            _logger.info("Received payment_intents response:\n%s", tx_sudo.pformat(payment_intent))
             self._include_payment_intent_in_notification_data(payment_intent, data)
         else:
             # Fetch the SetupIntent and PaymentMethod objects from Stripe.
@@ -58,7 +57,7 @@ class StripeController(http.Controller):
                 payload={'expand[]': 'payment_method'},  # Expand all required objects.
                 method='GET',
             )
-            _logger.info("Received setup_intents response:\n%s", pprint.pformat(setup_intent))
+            _logger.info("Received setup_intents response:\n%s", tx_sudo.pformat(setup_intent))
             self._include_setup_intent_in_notification_data(setup_intent, data)
 
         # Handle the notification data crafted with Stripe API's objects.
@@ -75,7 +74,10 @@ class StripeController(http.Controller):
         :rtype: str
         """
         event = request.get_json_data()
-        _logger.info("Notification received from Stripe with data:\n%s", pprint.pformat(event))
+        _logger.info(
+            "Notification received from Stripe with data:\n%s",
+            request.env['payment.provider'].pformat(event, 'stripe'),
+        )
         try:
             if event['type'] in HANDLED_WEBHOOK_EVENTS:
                 stripe_object = event['data']['object']  # {Payment,Setup}Intent, Charge, or Refund.
@@ -98,7 +100,7 @@ class StripeController(http.Controller):
                             f'payment_methods/{stripe_object["payment_method"]}', method='GET'
                         )
                         _logger.info(
-                            "Received payment_methods response:\n%s", pprint.pformat(payment_method)
+                            "Received payment_methods response:\n%s", tx_sudo.pformat(payment_method)
                         )
                         stripe_object['payment_method'] = payment_method
                     self._include_payment_intent_in_notification_data(stripe_object, data)
@@ -108,7 +110,7 @@ class StripeController(http.Controller):
                         f'payment_methods/{stripe_object["payment_method"]}', method='GET'
                     )
                     _logger.info(
-                        "Received payment_methods response:\n%s", pprint.pformat(payment_method)
+                        "Received payment_methods response:\n%s", tx_sudo.pformat(payment_method)
                     )
                     stripe_object['payment_method'] = payment_method
                     self._include_setup_intent_in_notification_data(stripe_object, data)

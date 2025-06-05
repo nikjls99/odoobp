@@ -1,7 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
-import pprint
 
 from odoo import _, fields, models
 from odoo.exceptions import ValidationError
@@ -40,7 +39,10 @@ class PaymentToken(models.Model):
             },
             method='GET'
         )
-        _logger.info("received payment_methods response:\n%s", pprint.pformat(response_content))
+        _logger.info(
+            "received payment_methods response:\n%s",
+            self.provider_id.pformat(response_content),
+        )
 
         # Store the payment method ID on the token
         payment_methods = response_content.get('data', [])

@@ -1,7 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
-import pprint
 import re
 import unicodedata
 from datetime import datetime
@@ -467,7 +466,7 @@ class PaymentTransaction(models.Model):
         _logger.info(
             "generic and provider-specific processing values for transaction with reference "
             "%(ref)s:\n%(values)s",
-            {'ref': self.reference, 'values': pprint.pformat(processing_values)},
+            {'ref': self.reference, 'values': self.pformat(processing_values)},
         )
 
         # Render the html form for the redirect flow if available.
@@ -480,7 +479,7 @@ class PaymentTransaction(models.Model):
                 _logger.info(
                     "provider-specific rendering values for transaction with reference "
                     "%(ref)s:\n%(values)s",
-                    {'ref': self.reference, 'values': pprint.pformat(rendering_values)},
+                    {'ref': self.reference, 'values': self.pformat(rendering_values)},
                 )
                 redirect_form_html = self.env['ir.qweb']._render(redirect_form_view.id, rendering_values)
                 processing_values.update(redirect_form_html=redirect_form_html)
@@ -962,7 +961,7 @@ class PaymentTransaction(models.Model):
         }
         _logger.debug(
             "post-processing values of transaction with reference %s for provider with id %s:\n%s",
-            self.reference, self.provider_id.id, pprint.pformat(post_processing_values)
+            self.reference, self.provider_id.id, self.pformat(post_processing_values)
         )  # DEBUG level because this can get spammy with transactions in non-final states
         return post_processing_values
 
@@ -1048,6 +1047,21 @@ class PaymentTransaction(models.Model):
         :return: None
         """
         self.ensure_one()
+
+    def pformat(self, values):
+        """ Format values as a string for logging purposes.
+
+        To add provider-specific behavior, override the `pformat` method of `payment.provider`
+        instead of this one.
+
+        Note: `self.ensure_one()`
+
+        :param any values: The values to format.
+        :return: The values, formatted as a string.
+        :rtype: str
+        """
+        self.ensure_one()
+        return self.provider_id.pformat(values, self.provider_code)
 
     #=== BUSINESS METHODS - GETTERS ===#
 

@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import ast
 import unittest
 from unittest.mock import patch
 
@@ -38,6 +39,15 @@ class StripeTest(StripeCommon, PaymentHttpCommon):
             base_url, f'{StripeController._return_url}?{url_encode({"reference": tx.reference})}'
         )
         self.assertEqual(processing_values['return_url'], return_url)
+
+        formatted_values = tx.pformat(processing_values)
+        logged_values = ast.literal_eval(formatted_values)
+        self.assertIn('client_secret', logged_values)
+        self.assertNotEqual(
+            logged_values['client_secret'],
+            processing_values['client_secret'],
+            "`client_secret` should be kept secret when logging",
+        )
 
     @mute_logger('odoo.addons.payment_stripe.models.payment_transaction')
     def test_tx_state_after_send_capture_request(self):

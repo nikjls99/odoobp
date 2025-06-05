@@ -1,8 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
-
-from psycopg2 import sql
+import pprint
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -754,3 +753,16 @@ class PaymentProvider(models.Model):
         """
         self.ensure_one()
         return []
+
+    @api.model
+    def pformat(self, values, provider_code=None):
+        """ Return values formatted as a string for logging purposes.
+
+        Enables provider-specific overrides to scrub secret values that shouldn't be logged.
+
+        :param any values: The values to format.
+        :param str provider_code: The code of the provider associated with the values (optional).
+        :return: Values formatted as a string.
+        :rtype: str
+        """
+        return pprint.pformat(values)

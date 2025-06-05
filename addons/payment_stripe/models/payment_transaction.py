@@ -1,7 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
-import pprint
 
 from werkzeug.urls import url_encode, url_join
 
@@ -12,7 +11,6 @@ from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment_stripe import const
 from odoo.addons.payment_stripe import utils as stripe_utils
 from odoo.addons.payment_stripe.controllers.main import StripeController
-
 
 _logger = logging.getLogger(__name__)
 
@@ -62,7 +60,7 @@ class PaymentTransaction(models.Model):
         payment_intent = self._stripe_create_intent()
         _logger.info(
             "payment request response for transaction with reference %s:\n%s",
-            self.reference, pprint.pformat(payment_intent)
+            self.reference, self.pformat(payment_intent),
         )
         if not payment_intent:  # The PI might be missing if Stripe failed to create it.
             return  # There is nothing to process; the transaction is in error at this point.
@@ -260,7 +258,7 @@ class PaymentTransaction(models.Model):
         )
         _logger.info(
             "Refund request response for transaction wih reference %s:\n%s",
-            self.reference, pprint.pformat(data)
+            self.reference, self.pformat(data),
         )
         # Handle the refund request response.
         notification_data = {}
@@ -281,7 +279,7 @@ class PaymentTransaction(models.Model):
         )
         _logger.info(
             "capture request response for transaction with reference %s:\n%s",
-            self.reference, pprint.pformat(payment_intent)
+            self.reference, self.pformat(payment_intent),
         )
 
         # Handle the capture request response
@@ -305,7 +303,7 @@ class PaymentTransaction(models.Model):
         )
         _logger.info(
             "void request response for transaction with reference %s:\n%s",
-            self.reference, pprint.pformat(payment_intent)
+            self.reference, self.pformat(payment_intent),
         )
 
         # Handle the void request response
@@ -464,7 +462,7 @@ class PaymentTransaction(models.Model):
             payment_methods = self.provider_id._stripe_make_request(
                 f'customers/{customer_id}/payment_methods', method='GET'
             )
-            _logger.info("Received payment_methods response:\n%s", pprint.pformat(payment_methods))
+            _logger.info("Received payment_methods response:\n%s", self.pformat(payment_methods))
             payment_method = payment_methods['data'][0]
 
         # Create the token.

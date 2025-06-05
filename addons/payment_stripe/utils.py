@@ -1,5 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import re
+
+
 def get_publishable_key(provider_sudo):
     """ Return the publishable key for Stripe.
 
@@ -37,6 +40,26 @@ def get_webhook_secret(provider_sudo):
     :rtype: str
     """
     return provider_sudo.stripe_webhook_secret
+
+
+def scrub_secret_values(values):
+    """ Replace the `client_secret` value to hide it for logging.
+
+    See: https://docs.stripe.com/api/payment_intents/object#payment_intent_object-client_secret
+
+    :param any values: payment-values which will be logged.
+
+    :return: The scrubbed values.
+    :rtype: any
+    """
+    if isinstance(values, dict) and (client_secret := values.get('client_secret')):
+        return dict(
+            values,
+            client_secret=re.sub(r'secret_\w+$', 'secret_REDACTED', client_secret),
+        )
+    if isinstance(values, list):
+        return [scrub_secret_values(v) for v in values]
+    return values
 
 
 def include_shipping_address(tx_sudo):
