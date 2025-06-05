@@ -19,6 +19,7 @@ import { MediaDialog } from "./media_dialog/media_dialog";
 import { rightPos } from "@html_editor/utils/position";
 import { withSequence } from "@html_editor/utils/resource";
 import { closestElement } from "@html_editor/utils/dom_traversal";
+import { removeAnchorFromMedia } from "./utils";
 
 /**
  * @typedef { Object } MediaShared
@@ -104,6 +105,9 @@ export class MediaPlugin extends Plugin {
             mediaElements.push(node);
         }
         for (const el of mediaElements) {
+            if (el.classList.contains("media_iframe_video")) {
+                removeAnchorFromMedia(el);
+            }
             if (isProtected(el) || isProtecting(el)) {
                 continue;
             }

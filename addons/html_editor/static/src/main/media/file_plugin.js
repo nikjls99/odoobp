@@ -5,6 +5,7 @@ import {
 import { Plugin } from "@html_editor/plugin";
 import { withSequence } from "@html_editor/utils/resource";
 import { _t } from "@web/core/l10n/translation";
+import { removeAnchorFromMedia } from "./utils";
 
 export class FilePlugin extends Plugin {
     static id = "file";
@@ -40,6 +41,12 @@ export class FilePlugin extends Plugin {
             },
         }),
         selectors_for_feff_providers: () => ".o_file_box",
+        normalize_handlers: (node) => {
+            const fileElements = node.querySelector(".o_file_box");
+            if (fileElements?.classList.contains("o_file_box")) {
+                removeAnchorFromMedia(fileElements);
+            }
+        },
     };
 
     get recordInfo() {

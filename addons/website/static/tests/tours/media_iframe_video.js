@@ -1,9 +1,37 @@
+import { patch } from "@web/core/utils/patch";
+import { VideoSelector } from "@html_editor/main/media/media_dialog/video_selector";
 import { insertSnippet, registerWebsitePreviewTour } from "@website/js/tours/tour_utils";
 
 registerWebsitePreviewTour("website_media_iframe_video", {
         url: "/",
         edition: true,
     }, () => [
+        {
+            trigger: "body",
+            run: function () {
+                // Patch the VideoDialog so that it does not do external calls
+                // during the test (note that we don't unpatch but as the patch
+                // is only done after the execution of a test_website test, it
+                // is acceptable).
+                patch(VideoSelector.prototype, {
+                    async prepareVimeoPreviews() {
+                        // Ignore the super call and directly push a fake video
+                        this.state.vimeoPreviews.push({
+                            id: 1,
+                            // Those lead to 404 but it's fine for the test
+                            thumbnailSrc: "/hello/world.jpg",
+                            src: "/hello/world.mp4",
+                        });
+                    },
+                    async _getVideoURLData(src, options) {
+                        if (src === "/hello/world.mp4") {
+                            return { platform: "vimeo", embed_url: "about:blank" };
+                        }
+                        return super._getVideoURLData(...arguments);
+                    },
+                });
+            },
+        },
         ...insertSnippet({
             id: "s_text_image",
             name: "Text - Image",
@@ -11,12 +39,13 @@ registerWebsitePreviewTour("website_media_iframe_video", {
         }),
         {
             content: "Select the image",
-            trigger: ":iframe #wrap .s_text_image img",
+            trigger:
+                ":iframe #wrap .s_text_image img, :iframe #wrap .s_text_image img:not(:visible)",
             run: "click",
         },
         {
             content: "Open image link options",
-            trigger: "[data-name='media_link_opt']",
+            trigger: "[data-action-id='setLink']",
             run: "click",
         },
         {
@@ -26,7 +55,7 @@ registerWebsitePreviewTour("website_media_iframe_video", {
         },
         {
             content: "Click on replace media",
-            trigger: "[data-replace-media='true']",
+            trigger: "[data-action-id='replaceMedia']",
             run: "click",
         },
         {
@@ -50,7 +79,7 @@ registerWebsitePreviewTour("website_media_iframe_video", {
         },
         {
             content: "Click on replace media",
-            trigger: "[data-replace-media='true']",
+            trigger: "[data-action-id='replaceMedia']",
             run: "click",
         },
         {
