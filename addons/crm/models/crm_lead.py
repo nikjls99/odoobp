@@ -132,7 +132,7 @@ class CrmLead(models.Model):
         'crm.stage', string='Stage', index=True, tracking=True,
         compute='_compute_stage_id', readonly=False, store=True,
         copy=False, group_expand='_read_group_stage_ids', ondelete='restrict',
-        domain="['|', ('team_id', '=', False), ('team_id', '=', team_id)]")
+        domain="['|', ('team_ids', '=', False), ('team_ids', 'in', team_id)]")
     tag_ids = fields.Many2many(
         'crm.tag', 'crm_tag_rel', 'lead_id', 'tag_id', string='Tags',
         help="Classify and analyze your lead/opportunity categories like: Training, Service")
@@ -160,6 +160,10 @@ class CrmLead(models.Model):
         'Last Stage Update', compute='_compute_date_last_stage_update', index=True, readonly=True, store=True)
     date_conversion = fields.Datetime('Conversion Date', readonly=True)
     date_deadline = fields.Date('Expected Closing', help="Estimate of the date on which the opportunity will be won.")
+    date_rot = fields.Date('Last activity', compute="_compute_date_rot", store=True)
+    is_rotting = fields.Boolean('Rotting', compute='_compute_rotting')
+    day_rotting = fields.Integer('Days Rotting', help='Day count since this lead was last updated',
+        compute='_compute_rotting')
     # Customer / contact
 
     # UX field to ease partner creation
@@ -387,6 +391,34 @@ class CrmLead(models.Model):
             date_create = fields.Datetime.from_string(lead.create_date)
             date_close = fields.Datetime.from_string(lead.date_closed)
             lead.day_close = abs((date_close - date_create).days)
+
+    @api.depends('message_ids', 'write_date', 'stage_id.day_rot')
+    def _compute_date_rot(self):
+        for lead in self:
+            # should only fetch the first message with types Email Outgoing or Comment (or Notification, for completed activities)
+            last_message = next(
+                (
+                    message for message in lead.message_ids if message.message_type in ['email_outgoing', 'comment', 'notification']
+                ), False
+            )
+            if last_message:
+                last_activity = max(last_message.date, lead.write_date).date()
+            else:
+                last_activity = lead.write_date or fields.Date.today()
+            lead.date_rot = last_activity + timedelta(days=lead.stage_id.day_rot)
+
+    @api.depends('won_status', 'type', 'date_rot', 'write_date', 'message_ids', 'stage_id.day_rot')
+    def _compute_rotting(self):
+        for lead in self:
+            if (lead.won_status != 'pending'
+                or lead.type != 'opportunity'
+                or fields.Date.today() < lead.date_rot
+                or lead.stage_id.day_rot == 0):
+                lead.is_rotting = False
+                lead.day_rotting = 0
+            else:
+                lead.is_rotting = True
+                lead.day_rotting = (fields.Date.today() - lead.date_rot).days + lead.stage_id.day_rot
 
     @api.depends('partner_id')
     def _compute_name(self):
@@ -1043,9 +1075,9 @@ class CrmLead(models.Model):
         # - OR ('team_ids', '=', team_id), ('fold', '=', False) if team_id: add team columns that are not folded
         team_id = self._context.get('default_team_id')
         if team_id:
-            search_domain = ['|', ('id', 'in', stages.ids), '|', ('team_id', '=', False), ('team_id', '=', team_id)]
+            search_domain = ['|', ('id', 'in', stages.ids), '|', ('team_ids', '=', False), ('team_ids', 'in', team_id)]
         else:
-            search_domain = ['|', ('id', 'in', stages.ids), ('team_id', '=', False)]
+            search_domain = ['|', ('id', 'in', stages.ids), ('team_ids', '=', False)]
 
         # perform search
         stage_ids = stages.sudo()._search(search_domain, order=stages._order)
@@ -1068,9 +1100,9 @@ class CrmLead(models.Model):
                 team_ids.add(lead.team_id.id)
         # generate the domain
         if team_ids:
-            search_domain = ['|', ('team_id', '=', False), ('team_id', 'in', list(team_ids))]
+            search_domain = ['|', ('team_ids', '=', False), ('team_ids', 'in', list(team_ids))]
         else:
-            search_domain = [('team_id', '=', False)]
+            search_domain = [('team_ids', '=', False)]
         # AND with the domain in parameter
         if domain:
             search_domain += list(domain)
@@ -1165,18 +1197,58 @@ class CrmLead(models.Model):
         if not self.user_id or not self.team_id:
             return False
         if not self.expected_revenue:
-            # Show rainbow man for the first won lead of a salesman, even if expected revenue is not set. It is not
-            # very often that leads without revenues are marked won, so simply get count using ORM instead of query
-            today = fields.Datetime.today()
-            user_won_leads_count = self.search_count([
-                ('type', '=', 'opportunity'),
-                ('user_id', '=', self.user_id.id),
-                ('won_status', '=', 'won'),
-                ('date_closed', '>=', date_utils.start_of(today, 'year')),
-                ('date_closed', '<', date_utils.end_of(today, 'year')),
-            ])
-            if user_won_leads_count == 1:
+            query = """
+                SELECT
+                    SUM(CASE WHEN user_id = %(user_id)s THEN 1 ELSE 0 END) as count_user_closed_year,
+                    SUM(CASE WHEN date_closed::date = CURRENT_DATE AND user_id = %(user_id)s THEN 1 ELSE 0 END) as count_user_closed_today,
+                    SUM(CASE WHEN country_id = %(country_id)s AND team_id = %(team_id)s THEN 1 ELSE 0 END) as count_country_closed_year,
+                    SUM(CASE WHEN partner_id = %(source_id)s AND team_id = %(team_id)s THEN 1 ELSE 0 END) as count_source_closed_year,
+                    MIN(CASE WHEN date_closed >= CURRENT_DATE - INTERVAL '30 days' AND team_id = %(team_id)s THEN day_close ELSE 1000000 END) as min_day_close_30,
+
+                    SUM(CASE WHEN date_closed::date = (CURRENT_DATE - INTERVAL '1 day')  AND user_id = %(user_id)s THEN 1 ELSE 0 END) as count_user_closed_yesterday,
+                    SUM(CASE WHEN date_closed::date = (CURRENT_DATE - INTERVAL '2 days') AND user_id = %(user_id)s THEN 1 ELSE 0 END) as count_user_closed_minus2day,
+                    SUM(CASE WHEN date_closed::date = (CURRENT_DATE - INTERVAL '3 days') AND user_id = %(user_id)s THEN 1 ELSE 0 END) as count_user_closed_minus3day
+                FROM crm_lead
+                WHERE
+                    type='opportunity'
+                AND
+                    active = True
+                AND
+                    probability = 100
+                AND
+                    DATE_TRUNC('year', date_closed) = DATE_TRUNC('year', CURRENT_DATE)
+                AND
+                    (user_id = %(user_id)s OR team_id = %(team_id)s)
+            """
+            self.env.cr.execute(query, {
+                'user_id': self.user_id.id,
+                'team_id': self.team_id.id,
+                'country_id': self.country_id.id or -1,
+                'source_id': self.source_id.id or -1,
+            })
+            query_result = self.env.cr.dictfetchone()
+
+            if query_result['count_user_closed_year'] == 1:
                 return _('Go, go, go! Congrats for your first deal.')
+            elif query_result['count_user_closed_today'] == 5:
+                return _('You\'re on fire! Fifth deal won today 🔥')
+            elif query_result['count_country_closed_year'] == 1 and self.country_id:
+                return _('You just expanded the map! First win in %s.', self.country_id.name)
+            elif query_result['count_source_closed_year'] == 1 and self.source_id:
+                return _('Boom! First win from %s - keep it coming!', self.source_id.name)
+            elif len(self.message_ids) >= 25:
+                return _('Phew, that took some effort — but you nailed it. Good job!')
+            elif query_result['count_user_closed_yesterday'] and query_result['count_user_closed_minus2day'] and not query_result['count_user_closed_minus3day']:
+                return _('You\'re on a winning streak. 3 deals in 3 days, congrats!')
+            elif query_result['min_day_close_30'] == self.day_close:
+                return _('Wow, that was fast. That deal didn’t stand a chance!')
+            # use duration tracking field to determine if the task jumped from first to last stage
+            elif len([duration for duration in self.duration_tracking.values() if duration > 0]) == 1:
+                first_stage = self.env['crm.stage'].search(
+                    [('id', 'in', [int(stage_id) for stage_id, duration in self.duration_tracking.items() if duration > 0])],
+                    limit=1
+                )
+                return _('No detours, no delays - from %s straight to the win! 🚀', first_stage.name)
             return False
 
         self.flush_model()  # flush fields to make sure DB is up to date
@@ -1521,7 +1593,7 @@ class CrmLead(models.Model):
 
         # check if the stage is in the stages of the Sales Team. If not, assign the stage with the lowest sequence
         if merged_data.get('team_id'):
-            team_stage_ids = self.env['crm.stage'].search(['|', ('team_id', '=', merged_data['team_id']), ('team_id', '=', False)], order='sequence, id')
+            team_stage_ids = self.env['crm.stage'].search(['|', ('team_ids', 'in', merged_data['team_id']), ('team_ids', '=', False)], order='sequence, id')
             if merged_data.get('stage_id') not in team_stage_ids.ids:
                 merged_data['stage_id'] = team_stage_ids[0].id if team_stage_ids else False
 
@@ -2081,7 +2153,13 @@ class CrmLead(models.Model):
             defaults['priority'] = msg_dict.get('priority')
         defaults.update(custom_values)
 
-        return super().message_new(msg_dict, custom_values=defaults)
+        new_lead = super().message_new(msg_dict, custom_values=defaults)
+        auto_assign_action = self.env['ir.config_parameter'].sudo().get_param('crm.lead.auto.assignment.action', 'incoming_emails')
+        if auto_assign_action == 'incoming_emails':
+            members_filtered = new_lead.team_id.crm_team_member_ids.filtered(lambda member: not member.assignment_optout)
+            if members_filtered:
+                new_lead.user_id = members_filtered.sorted(key=lambda member: member.lead_month_count)[0].user_id
+        return new_lead
 
     def _message_post_after_hook(self, message, msg_vals):
         if self.email_from and not self.partner_id:
@@ -2602,7 +2680,7 @@ class CrmLead(models.Model):
         :return: won count, lost count and total count for all records in frequencies
         """
         # TODO : check if we need to handle specific team_id stages [for lost count] (if first stage in sequence is team_specific)
-        first_stage_id = self.env['crm.stage'].search([('team_id', '=', False)], order='sequence, id', limit=1)
+        first_stage_id = self.env['crm.stage'].search([('team_ids', '=', False)], order='sequence, id', limit=1)
         if str(first_stage_id.id) not in team_results.get('stage_id', []):
             return 0, 0, 0
         stage_result = team_results['stage_id'][str(first_stage_id.id)]

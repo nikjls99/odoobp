@@ -1,7 +1,6 @@
 import { onWillStart } from "@odoo/owl";
 import { user } from "@web/core/user";
 import { ColumnProgress } from "@web/views/view_components/column_progress";
-import { session } from "@web/session";
 import { getCurrency } from "@web/core/currency";
 
 export class CrmColumnProgress extends ColumnProgress {
@@ -21,13 +20,37 @@ export class CrmColumnProgress extends ColumnProgress {
         });
     }
 
+    /**
+     * As agreggates don't add in the currency for lead aggregates, we fetch it from the current group.
+     * Aggregates compute to 0 on lead groups with multiple currencies ; if the value is 0, we do not fetch the currency
+     * (alternatively we could fetch the current company currency, but user.activeCompany has no currency attached)
+     */
+    get currency() {
+        const firstRecord = this.props.group.list.records[0];
+        if (this.props.aggregate.value && firstRecord && firstRecord.data.company_currency) {
+            return getCurrency(firstRecord.data.company_currency.id);
+        }
+        return false;
+    }
+
     getRecurringRevenueGroupAggregate(group) {
         const rrField = this.props.progressBarState.progressAttributes.recurring_revenue_sum_field;
         const aggregatedValue = this.props.progressBarState.getAggregateValue(group, rrField);
         let currency = false;
-        if (aggregatedValue.value && rrField.currency_field) {
-            currency = getCurrency(session.company_currency_id);
+        const firstRecord = this.props.group.list.records[0];
+        if (aggregatedValue.value && rrField.currency_field && firstRecord && firstRecord.data.company_currency) {
+            currency = getCurrency(firstRecord.data.company_currency.id);
         }
         return { ...aggregatedValue, currency };
+    }
+    getRottingGroupCount(group) {
+        const rotField = this.props.progressBarState.progressAttributes.rotting_count_field;
+        let rotCount = { title: rotField.string, value: 0};
+        group.list.records.forEach((record ) => {
+            if (record.data[rotField.name]) {
+                rotCount.value++;
+            }
+        })
+        return rotCount;
     }
 }
