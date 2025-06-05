@@ -43,7 +43,7 @@ registerWebsitePreviewTour(
             groupName: "Intro",
         }),
         patchStep,
-        ...openLinkPopup(`:iframe #wrap .s_banner a:nth-child(1)`, "Start Now", 0),
+        ...openLinkPopup(`:iframe #wrap .s_banner a:nth-child(1)`, "Start Now", 1, true),
         {
             content: "Popover should be shown",
             trigger: '.o-we-linkpopover .o_we_url_link:contains("Contact Us")',

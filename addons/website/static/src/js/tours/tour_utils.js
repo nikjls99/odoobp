@@ -634,12 +634,20 @@ export function toggleMobilePreview(toggleOn) {
  *                                      the link element.
  * @returns {TourStep[]} The tour steps that opens the link popup.
  */
-export function openLinkPopup(triggerSelector, linkName = "", focusNodeIndex = 0) {
+export function openLinkPopup(
+    triggerSelector,
+    linkName = "",
+    focusNodeIndex = 0,
+    triggerClick = false
+) {
     return [
         {
             content: `Open '${linkName}' link popup`,
             trigger: triggerSelector,
-            async run() {
+            async run(actions) {
+                if (triggerClick) {
+                    actions.click();
+                }
                 const el = this.anchor;
                 const sel = el.ownerDocument.getSelection();
                 sel.collapse(el.childNodes[focusNodeIndex], 1);
@@ -648,7 +656,7 @@ export function openLinkPopup(triggerSelector, linkName = "", focusNodeIndex = 0
         },
         {
             content: "Check if the link popover opened",
-            trigger: ".o-we-linkpopover"
+            trigger: ".o-we-linkpopover",
         },
     ];
 }
