@@ -140,8 +140,9 @@
                                         </div>
                                     </group>
                                 </group>
-                                <group>
+                                <group string="Livechat Limits">
                                     <group>
+                                        <field name="buffer_time" string="Buffer Time (sec)"/>
                                         <field name="max_sessions_mode" widget="radio" options="{'horizontal': true}"/>
                                         <field name="max_sessions" invisible="max_sessions_mode != 'limited'"/>
                                     </group>

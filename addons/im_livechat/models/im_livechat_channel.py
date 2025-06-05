@@ -53,6 +53,10 @@ class Im_LivechatChannel(models.Model):
         string="Maximum Sessions",
         help="Maximum number of concurrent sessions per operator.",
     )
+    buffer_time = fields.Integer(
+        help="Time in seconds between two sessions, to prevent assigning a new one"
+            "to an agent who may still be handling the previous one.",
+    )
 
     # computed fields
     web_page = fields.Char('Web Page', compute='_compute_web_page_link', store=False, readonly=True,
@@ -374,6 +378,25 @@ class Im_LivechatChannel(models.Model):
                 )
                 return previous_operator_user
 
+        last_channel_by_operator = dict(
+            self.env["discuss.channel"]._read_group(
+                [
+                    ("livechat_operator_id", "in", users.partner_id.ids),
+                    ("channel_type", "=", "livechat"),
+                    ("livechat_active", "=", True),
+                ],
+                groupby=["livechat_operator_id"],
+                aggregates=["create_date:max"],
+            )
+        )
+
+        def respect_buffer_time(operator):
+            return (
+                not self.buffer_time
+                or not (last_operator_dt := last_channel_by_operator.get(operator.partner_id))
+                or last_operator_dt + timedelta(seconds=self.buffer_time) < fields.Datetime.now()
+            )
+
         def same_language(operator):
             return operator.partner_id.lang == lang or lang in operator.livechat_lang_ids.mapped("code")
 
@@ -403,6 +426,8 @@ class Im_LivechatChannel(models.Model):
             for preference in preferences:
                 operators = operators.filtered(preference)
             if operators:
+                if operators_respect_buffer := operators.filtered(respect_buffer_time):
+                    operators = operators_respect_buffer
                 return self._get_less_active_operator(operator_statuses, operators)
         return self._get_less_active_operator(operator_statuses, users)
 
