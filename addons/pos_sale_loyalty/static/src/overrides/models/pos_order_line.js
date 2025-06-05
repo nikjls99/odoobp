@@ -1,4 +1,16 @@
+<<<<<<< 1fc971f39cacd78f3fb13407ab039bfe2860d7ef:addons/pos_sale_loyalty/static/src/overrides/models/pos_order_line.js
 import { PosOrderline } from "@point_of_sale/app/models/pos_order_line";
+||||||| 0a0dc2f1bd54f44356a5959b8bcd52aaddcf1261:addons/pos_sale_loyalty/static/src/overrides/models/models.js
+/** @odoo-module **/
+
+
+import { Orderline } from "@point_of_sale/app/store/models";
+=======
+/** @odoo-module **/
+
+
+import { Orderline, Order } from "@point_of_sale/app/store/models";
+>>>>>>> 26ad00e96b064e782d6c08b8efe1e9cde1265e5f:addons/pos_sale_loyalty/static/src/overrides/models/models.js
 import { patch } from "@web/core/utils/patch";
 
 patch(PosOrderline.prototype, {
@@ -19,3 +31,10 @@ patch(PosOrderline.prototype, {
         }
     },
 });
+
+patch(Order.prototype, {
+    isLineValidForLoyaltyPoints(line) {
+        const result = super.isLineValidForLoyaltyPoints(line);
+        return !line.sale_order_origin_id && result
+    }
+})
