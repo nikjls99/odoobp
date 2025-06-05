@@ -46,15 +46,12 @@ export class LivechatChannel extends models.ServerModel {
         return users.filter((user) => user.im_status === "online");
     }
     /** @param {integer} id */
-    _get_livechat_discuss_channel_vals(id, anonymous_name, previous_operator_id, country_id) {
+    _get_livechat_discuss_channel_vals(id, operator, country_id) {
+        /** @type {import("mock_models").MailGuest} */
+        const MailGuest = this.env["mail.guest"];
         /** @type {import("mock_models").ResUsers} */
         const ResUsers = this.env["res.users"];
 
-        const operator = this._get_operator(id, previous_operator_id);
-        if (!operator) {
-            return false;
-        }
-        // partner to add to the discuss.channel
         const membersToAdd = [
             Command.create({
                 unpin_dt: "2021-01-01 12:00:00",
@@ -62,8 +59,17 @@ export class LivechatChannel extends models.ServerModel {
                 partner_id: operator.partner_id,
             }),
         ];
+        const guest = ResUsers._is_public(this.env.uid) && MailGuest._get_guest_from_context();
+        if (guest) {
+            membersToAdd.push(Command.create({ guest_id: guest.id }));
+        }
+        let visitorUser;
+        if (this.env.user && !ResUsers._is_public(this.env.uid) && this.env.user !== operator) {
+            visitorUser = this.env.user;
+            membersToAdd.push(Command.create({ partner_id: visitorUser.partner_id }));
+        }
         const membersName = [
-            this.env.user ? this.env.user.display_name : anonymous_name,
+            visitorUser ? visitorUser.display_name : guest.name,
             operator.livechat_username ? operator.livechat_username : operator.name,
         ];
         return {
@@ -72,7 +78,7 @@ export class LivechatChannel extends models.ServerModel {
             livechat_active: true,
             livechat_operator_id: operator.partner_id,
             livechat_channel_id: id,
-            anonymous_name: ResUsers._is_public(this.env.uid) ? false : anonymous_name,
+            anonymous_name: visitorUser ? visitorUser.display_name : guest.name,
             country_id: country_id,
             channel_type: "livechat",
             name: membersName.join(" "),

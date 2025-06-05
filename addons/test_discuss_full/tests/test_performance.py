@@ -231,7 +231,6 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
             self.make_jsonrpc_request(
                 "/im_livechat/get_session",
                 {
-                    "anonymous_name": "anon 1",
                     "channel_id": self.im_livechat_channel.id,
                     "previous_operator_id": self.users[0].partner_id.id,
                 },
@@ -247,7 +246,6 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 self.make_jsonrpc_request(
                     "/im_livechat/get_session",
                     {
-                        "anonymous_name": "anon 2",
                         "channel_id": self.im_livechat_channel.id,
                         "previous_operator_id": self.users[0].partner_id.id,
                     },
@@ -920,7 +918,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
             }
         if channel == self.channel_livechat_1:
             return {
-                "anonymous_name": False,
+                "anonymous_name": "test1",
                 "avatar_cache_key": channel.avatar_cache_key,
                 "channel_type": "livechat",
                 "country_id": self.env.ref("base.in").id,
@@ -952,7 +950,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
             }
         if channel == self.channel_livechat_2:
             return {
-                "anonymous_name": "anon 2",
+                "anonymous_name": "Visitor",
                 "avatar_cache_key": channel.avatar_cache_key,
                 "channel_type": "livechat",
                 "country_id": self.env.ref("base.be").id,
@@ -977,7 +975,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "message_needaction_counter_bus_id": bus_last_id,
                 "message_needaction_counter": 0,
                 "mute_until_dt": False,
-                "name": "anon 2 Ernest Employee",
+                "name": "Visitor Ernest Employee",
                 "parent_channel_id": False,
                 "rtc_session_ids": [["ADD", []]],
                 "uuid": channel.uuid,
@@ -1496,7 +1494,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "body": ["markup", "<p>test</p>"],
                 "create_date": create_date,
                 "date": date,
-                "default_subject": "anon 2 Ernest Employee",
+                "default_subject": "Visitor Ernest Employee",
                 "email_from": False,
                 "id": last_message.id,
                 "incoming_email_cc": False,
@@ -1512,7 +1510,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "pinned_at": False,
                 "rating_id": False,
                 "reactions": [],
-                "record_name": "anon 2 Ernest Employee",
+                "record_name": "Visitor Ernest Employee",
                 "res_id": channel.id,
                 "scheduledDatetime": False,
                 "starred": False,
@@ -1810,5 +1808,5 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
         if channel == self.channel_livechat_1:
             return {**common_data, "display_name": "test1 Ernest Employee"}
         if channel == self.channel_livechat_2:
-            return {**common_data, "display_name": "anon 2 Ernest Employee"}
+            return {**common_data, "display_name": "Visitor Ernest Employee"}
         return {}

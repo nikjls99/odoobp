@@ -213,42 +213,43 @@ class Im_LivechatChannel(models.Model):
     # --------------------------
     # Channel Methods
     # --------------------------
-    def _get_livechat_discuss_channel_vals(
-        self, anonymous_name, previous_operator_id=None, chatbot_script=None, user_id=None, country_id=None, lang=None
-    ):
-        user_operator = False
-        if chatbot_script:
-            if chatbot_script.id not in self.browse(self.ids).mapped('rule_ids.chatbot_script_id.id'):
-                return False
-        else:
-            user_operator = self._get_operator(previous_operator_id=previous_operator_id, lang=lang, country_id=country_id)
-            if not user_operator:
-                # no one available
-                return False
-        # partner to add to the discuss.channel
-        operator_partner_id = user_operator.partner_id.id if user_operator else chatbot_script.operator_partner_id.id
+    def _get_livechat_discuss_channel_vals(self, chatbot_script=None, operator=None, country_id=None):
+        if not operator and not chatbot_script:
+            return False
+        operator_partner_id = (
+            operator.partner_id.id if operator else chatbot_script.operator_partner_id.id
+        )
         members_to_add = [
             Command.create(
                 {
-                    "livechat_member_type": "agent" if user_operator else "bot",
-                    "chatbot_script_id": chatbot_script.id if not user_operator else False,
+                    "livechat_member_type": "agent" if operator else "bot",
+                    "chatbot_script_id": chatbot_script.id if not operator else False,
                     "partner_id": operator_partner_id,
                     "unpin_dt": fields.Datetime.now(),
                 }
             )
         ]
+        if guest := self.env["mail.guest"]._get_guest_from_context():
+            members_to_add += [
+                Command.create({"livechat_member_type": "visitor", "guest_id": guest.id})
+            ]
         visitor_user = False
-        if user_id:
-            visitor_user = self.env['res.users'].browse(user_id)
-            if visitor_user and visitor_user.active and user_operator and visitor_user != user_operator:  # valid session user (not public)
-                members_to_add.append(Command.create({"livechat_member_type": "visitor", 'partner_id': visitor_user.partner_id.id}))
-
+        if not self.env.user._is_public():
+            visitor_user = self.env.user
+            if (
+                    visitor_user and visitor_user.active and operator and visitor_user != operator
+            ):  # valid session user (not public)
+                members_to_add.append(
+                    Command.create(
+                        {"livechat_member_type": "visitor", "partner_id": visitor_user.partner_id.id}
+                    )
+                )
         if chatbot_script:
             name = chatbot_script.title
         else:
             name = ' '.join([
-                visitor_user.display_name if visitor_user else anonymous_name,
-                user_operator.livechat_username or user_operator.name
+                visitor_user.display_name if visitor_user else guest.name,
+                operator.livechat_username or operator.name
             ])
 
         return {
@@ -256,9 +257,9 @@ class Im_LivechatChannel(models.Model):
             'livechat_active': True,
             'livechat_operator_id': operator_partner_id,
             'livechat_channel_id': self.id,
-            "livechat_failure": "no_answer" if user_operator else "no_failure",
+            "livechat_failure": "no_answer" if operator else "no_failure",
             'chatbot_current_step_id': chatbot_script._get_welcome_steps()[-1].id if chatbot_script else False,
-            'anonymous_name': False if user_id else anonymous_name,
+            'anonymous_name': visitor_user.display_name if visitor_user else guest.name,
             'country_id': country_id,
             'channel_type': 'livechat',
             'name': name,

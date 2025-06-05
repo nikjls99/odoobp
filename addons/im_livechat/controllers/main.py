@@ -78,15 +78,37 @@ class LivechatController(http.Controller):
 
     @http.route('/im_livechat/get_session', methods=["POST"], type="jsonrpc", auth='public')
     @add_guest_to_context
-    def get_session(self, channel_id, anonymous_name, previous_operator_id=None, chatbot_script_id=None, persisted=True):
+    def get_session(self, channel_id, previous_operator_id=None, chatbot_script_id=None, persisted=True):
         store = Store()
-        user_id = None
         country_id = None
         channel = request.env["discuss.channel"]
         guest = request.env["mail.guest"]
-        # if the user is identifiy (eg: portal user on the frontend), don't use the anonymous name. The user will be added to session.
+        chatbot_script = (
+            request.env["chatbot.script"]
+            .sudo()
+            .with_context(lang=request.env["chatbot.script"]._get_chatbot_language())
+            .browse(chatbot_script_id)
+        )
+        livechat_channel = (
+            request.env["im_livechat.channel"].with_context(lang=False).sudo().browse(channel_id)
+        )
+        if not livechat_channel:
+            return False
+        operator = False
+        if chatbot_script:
+            if chatbot_script not in livechat_channel.rule_ids.chatbot_script_id:
+                return False
+        else:
+            if previous_operator_id:
+                previous_operator_id = int(previous_operator_id)
+            operator = livechat_channel._get_operator(
+                previous_operator_id=previous_operator_id,
+                lang=request.cookies.get("frontend_lang"),
+                country_id=country_id,
+            )
+            if not operator:
+                return False
         if request.session.uid:
-            user_id = request.env.user.id
             country_id = request.env.user.country_id.id
         else:
             # if geoip, add the country name to the anonymous name
@@ -95,27 +117,8 @@ class LivechatController(http.Controller):
                 country = request.env['res.country'].sudo().search([('code', '=', request.geoip.country_code)], limit=1)
                 if country:
                     country_id = country.id
-
-        if previous_operator_id:
-            previous_operator_id = int(previous_operator_id)
-
-        chatbot_script = request.env["chatbot.script"]
-        if chatbot_script_id:
-            chatbot_script = request.env['chatbot.script'].sudo().with_context(
-                lang=request.env["chatbot.script"]._get_chatbot_language()
-            ).browse(chatbot_script_id)
-        channel_vals = request.env["im_livechat.channel"].with_context(lang=False).sudo().browse(channel_id)._get_livechat_discuss_channel_vals(
-            anonymous_name,
-            previous_operator_id=previous_operator_id,
-            chatbot_script=chatbot_script,
-            user_id=user_id,
-            country_id=country_id,
-            lang=request.cookies.get('frontend_lang')
-        )
-        if not channel_vals:
-            return False
-        channel_id = -1  # only one temporary thread at a time, id does not matter.
         if not persisted:
+            channel_id = -1  # only one temporary thread at a time, id does not matter.
             chatbot_data = None
             if chatbot_script:
                 welcome_steps = chatbot_script._get_welcome_steps()
@@ -125,22 +128,33 @@ class LivechatController(http.Controller):
                 }
                 store.add(chatbot_script)
                 store.add(welcome_steps)
-            operator = request.env["res.partner"].sudo().browse(channel_vals["livechat_operator_id"])
+            operator_partner = operator.partner_id if operator else chatbot_script.operator_partner_id
             channel_info = {
                 "fetchChannelInfoState": "fetched",
                 "id": channel_id,
                 "isLoaded": True,
                 "livechat_active": True,
                 "livechat_operator_id": Store.One(
-                    operator, ["avatar_128", "user_livechat_username"]
+                    operator_partner, ["avatar_128", "user_livechat_username"]
                 ),
-                "name": channel_vals["name"],
                 "scrollUnread": False,
                 "channel_type": "livechat",
                 "chatbot": chatbot_data,
             }
             store.add_model_values("discuss.channel", channel_info)
         else:
+            if request.env.user._is_public():
+                guest = guest.sudo()._get_or_create_guest(
+                    self._get_guest_name(),
+                    request.geoip.country_code,
+                    request.env["mail.guest"]._get_timezone_from_request(request),
+                )
+                livechat_channel = livechat_channel.with_context(guest=guest)
+            channel_vals = livechat_channel._get_livechat_discuss_channel_vals(
+                chatbot_script=chatbot_script,
+                operator=operator,
+                country_id=country_id,
+            )
             channel = request.env['discuss.channel'].with_context(
                 mail_create_nosubscribe=False,
                 lang=request.env['chatbot.script']._get_chatbot_language()
@@ -148,16 +162,6 @@ class LivechatController(http.Controller):
             channel_id = channel.id
             if chatbot_script:
                 chatbot_script._post_welcome_steps(channel)
-            with replace_exceptions(UserError, by=NotFound()):
-                # sudo: mail.guest - creating a guest and their member in a dedicated channel created from livechat
-                __, guest = channel.sudo()._find_or_create_persona_for_channel(
-                    guest_name=self._get_guest_name(),
-                    country_code=request.geoip.country_code,
-                    timezone=request.env['mail.guest']._get_timezone_from_request(request),
-                    create_member_params={"livechat_member_type": "visitor"},
-                    post_joined_message=False
-                )
-            channel = channel.with_context(guest=guest)  # a new guest was possibly created
             if not chatbot_script or chatbot_script.operator_partner_id != channel.livechat_operator_id:
                 channel._broadcast([channel.livechat_operator_id.id])
             if guest:
