@@ -239,9 +239,9 @@ class LivechatController(http.Controller):
 
     @http.route("/im_livechat/email_livechat_transcript", type="jsonrpc", auth="public")
     @add_guest_to_context
-    def email_livechat_transcript(self, channel_id, email):
+    def email_livechat_transcript(self, channel_id, email, log_notification=False):
         if channel := request.env["discuss.channel"].search([("id", "=", channel_id)]):
-            channel._email_livechat_transcript(email)
+            channel._email_livechat_transcript(email, log_notification)
 
     @http.route("/im_livechat/visitor_leave_session", type="jsonrpc", auth="public")
     @add_guest_to_context

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="im_livechat.TranscriptSender">
+        <div class="o-livechat-TranscriptSender input-group has-validation">
+            <input t-ref="inputRef" t-on-keydown="onKeydown" t-model="state.email" t-att-disabled="[STATUS.SENDING, STATUS.SENT].includes(state.status)" type="text" class="form-control" placeholder="mail@example.com" />
+            <button class="btn btn-primary" type="button" data-action="sendTranscript" t-att-disabled="isButtonDisabled" t-on-click="onClickSend">
+                <i class="fa" t-att-class="{
+                'fa-circle-o-notch fa-spin': state.status === STATUS.SENDING,
+                'fa-check': state.status === STATUS.SENT,
+                'fa-paper-plane': state.status === STATUS.IDLE,
+                'fa-repeat': state.status === STATUS.FAILED,
+            }" />
+            </button>
+        </div>
+    </t>
+</templates>

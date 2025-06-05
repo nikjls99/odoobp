@@ -103,6 +103,20 @@ export class DiscussChannel extends mailModels.DiscussChannel {
         return "Visitor left the conversation.";
     }
 
+    _email_livechat_transcript(channel_id, email, log_notification) {
+        const [channel] = this.browse(channel_id);
+        if(log_notification) {
+            this.message_post(
+                channel.id,
+                makeKwArgs({
+                    body: `<div class="o_mail_notification">sent the conversation to ${email}</div>`,
+                    message_type: "notification",
+                    subtype_xmlid: "mail.mt_comment",
+                })
+            );
+        }
+    }
+
     /**
      * @override
      * @type {typeof mailModels.DiscussChannel["prototype"]["_types_allowing_seen_infos"]}

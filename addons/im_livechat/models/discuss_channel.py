@@ -293,7 +293,7 @@ class DiscussChannel(models.Model):
     def _rating_get_parent_field_name(self):
         return 'livechat_channel_id'
 
-    def _email_livechat_transcript(self, email):
+    def _email_livechat_transcript(self, email, log_notification):
         company = self.env.user.company_id
         render_context = {
             "company": company,
@@ -309,6 +309,14 @@ class DiscussChannel(models.Model):
             'body_html': mail_body,
         })
         mail.send()
+        if log_notification:
+            self.message_post(
+                author_id=self.env.user.partner_id.id,
+                body=Markup('<div class="o_mail_notification">%s</div>')
+                % _("sent the conversation to %(email)s", email=email),
+                message_type='notification',
+                subtype_xmlid='mail.mt_comment',
+            )
 
     def _get_channel_history(self):
         """

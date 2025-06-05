@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="im_livechat.TranscriptSender" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o-livechat-TranscriptSender')]" position="replace">
+            <ActionPanel title.translate="Send a copy of conversation" resizable="false" icon="'fa fa-paper-plane'">
+                <t>$0</t>
+            </ActionPanel>
+        </xpath>
+    </t>
+</templates>
