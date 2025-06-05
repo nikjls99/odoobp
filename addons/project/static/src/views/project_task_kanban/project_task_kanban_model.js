@@ -40,6 +40,8 @@ export class ProjectTaskRecord extends Record {
 }
 
 export class ProjectTaskKanbanModel extends RelationalModel {
+    static withCache = false;
+
     async _webReadGroup(config, firstGroupByName, orderBy) {
         config.context = {
             ...config.context,

@@ -3,6 +3,8 @@ import { DynamicRecordList } from "@web/model/relational_model/dynamic_record_li
 import { RelationalModel } from "@web/model/relational_model/relational_model";
 
 export class InventoryReportListModel extends RelationalModel {
+    static withCache = false;
+
     /**
      * Override
      */

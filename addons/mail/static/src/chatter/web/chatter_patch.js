@@ -89,6 +89,9 @@ patch(Chatter.prototype, {
                 "/mail/thread/recipients/fields",
                 {
                     thread_model: this.props.threadModel,
+                },
+                {
+                    cached: true, // This is just to test correctly the caches !
                 }
             );
             this.mailImpactingFields = {

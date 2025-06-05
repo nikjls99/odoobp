@@ -21,10 +21,13 @@ class RamCache {
         delete this.ram[table]?.[key];
     }
 
-    invalidate(table) {
-        if (table) {
-            if (table in this.ram) {
-                this.ram[table] = {};
+    invalidate(tables = null) {
+        if (tables) {
+            tables = typeof tables === "string" ? [tables] : tables;
+            for (const table of tables) {
+                if (table in this.ram) {
+                    this.ram[table] = {};
+                }
             }
         } else {
             this.ram = {};
@@ -38,34 +41,50 @@ export class PersistentCache {
         this.ramCache = new RamCache();
     }
 
-    read(table, key, fallback) {
+    read(table, key, fallback, { onUpdate }) {
         const ramValue = this.ramCache.read(table, key);
-        if (ramValue) {
+        if (ramValue && !onUpdate) {
             return ramValue;
         }
-
         const def = new Deferred();
-        this.indexedDB.read(table, key).then((result) => {
-            if (result) {
-                def.resolve(result);
-            }
-        });
+        let fromCache = false;
         const prom = fallback()
             .then((result) => {
                 this.indexedDB.write(table, key, result);
+                this.ramCache.write(table, key, Promise.resolve(result));
                 def.resolve(result);
+                if (onUpdate && fromCache && fromCache !== JSON.stringify(result)) {
+                    onUpdate(result);
+                }
                 return result;
             })
             .catch((error) => {
+                if (fromCache) {
+                    throw error;
+                }
                 this.ramCache.delete(table, key);
                 def.reject(error);
             });
-        this.ramCache.write(table, key, prom);
+        if (ramValue) {
+            ramValue.then((value) => {
+                fromCache = JSON.stringify(value);
+                def.resolve(value);
+            });
+        } else {
+            this.ramCache.write(table, key, prom);
+            this.indexedDB.read(table, key).then((result) => {
+                if (result) {
+                    fromCache = JSON.stringify(result);
+                    this.ramCache.write(table, key, Promise.resolve(result));
+                    def.resolve(result);
+                }
+            });
+        }
         return def;
     }
 
-    invalidate(table) {
-        this.indexedDB.invalidate(table);
-        this.ramCache.invalidate(table);
+    invalidate(tables) {
+        this.indexedDB.invalidate(tables);
+        this.ramCache.invalidate(tables);
     }
 }
