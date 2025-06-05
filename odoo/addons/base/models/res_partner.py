@@ -66,7 +66,7 @@ class FormatVATLabelMixin(models.AbstractModel):
         """The override of _get_view, changes the view
         according to the vat label associated to the user's company country,
         and makes the view cache dependent on this field.
-        Different companies could use each a different vat label"""
+        and makes the view cache dependent on this field."""
         key = super()._get_view_cache_key(view_id, view_type, **options)
         return key + (self.env.company.country_id.vat_label,)
 
