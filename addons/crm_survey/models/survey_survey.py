@@ -9,7 +9,7 @@ class SurveySurvey(models.Model):
     @api.depends('created_leads', 'title')
     def _compute_created_leads(self):
         for survey in self:
-            domain = [("survey_id", "=", self.id)]
+            domain = [('survey_id', 'in', survey.ids)]
             leads = self.env['crm.lead'].search_count(domain)
             survey.created_leads = leads
 
@@ -17,5 +17,5 @@ class SurveySurvey(models.Model):
         """This method will show the leads created from the current survey"""
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id("crm.crm_lead_all_leads")
-        action['domain'] = [("survey_id", "=", self.id)]
+        action['domain'] = [('survey_id', 'in', self.ids)]
         return action
