@@ -60,6 +60,9 @@ registerWebsitePreviewTour('edit_menus', {
     {
         trigger: ":iframe body:contains(welcome to your)",
     },
+    {
+        trigger: ":iframe .top_menu .o_extra_menu_items a.nav-link",
+    },
     clickOnExtraMenuItem({}, true),
     {
         content: "There should be a new megamenu item.",
@@ -118,6 +121,19 @@ registerWebsitePreviewTour('edit_menus', {
         trigger: '.oe_menu_editor .js_menu_label:contains("Random!")',
     },
     {
+        content: `Drag "Random!" menu below "Home" menu`,
+        trigger: '.oe_menu_editor li:contains("Random!") .fa-bars',
+        run(helpers) {
+            return helpers.drag_and_drop('.oe_menu_editor li:contains("Home")', {
+                position: {
+                    top: 57,
+                    left: 5,
+                },
+                relative: true,
+            });
+        },
+    },
+    {
         content: "Save the website menu with the new entry",
         trigger: '.modal:not(.o_inactive_modal) .modal-footer .btn-primary',
         run: "click",
@@ -148,14 +164,12 @@ registerWebsitePreviewTour('edit_menus', {
         run: "click",
     },
     ...clickOnSave(),
-    clickOnExtraMenuItem({}, true),
     {
         content: "Label should have changed",
         trigger: ':iframe .top_menu .nav-item a:contains("Modnar")',
     },
     // Edit the menu item from the "edit menu" popover button
     ...clickOnEditAndWaitEditMode(),
-    clickOnExtraMenuItem({}, true),
     ...openLinkPopup(":iframe .top_menu .nav-item a:contains('Modnar')", "Modnar"),
     {
         content: "Click on the popover Edit Menu button",
@@ -329,11 +343,18 @@ registerWebsitePreviewTour('edit_menus', {
     },
     ...clickOnEditAndWaitEditMode(),
     {
+        content: "Scroll up to navbar",
+        trigger: ":iframe .top_menu",
+        run() {
+            this.anchor.scrollIntoView(true);
+        }
+    },
+    {
         trigger: ":iframe main section.s_media_list .s_media_list_item:eq(2) h3:contains(post)",
     },
     {
         content: "Open nested menu item",
-        trigger: ':iframe .o_top_fixed_element .nav-item:contains("Home"):nth-child(2) .dropdown-toggle',
+        trigger: ':iframe #top_menu .nav-item:nth-child(2) .dropdown-toggle',
         run: "click",
     },
     {

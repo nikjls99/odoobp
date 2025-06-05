@@ -24,14 +24,10 @@ registerWebsitePreviewTour('edit_megamenu', {
     edition: true,
 }, () => [
     // Add a megamenu item to the top menu.
+    ...openLinkPopup(":iframe .top_menu .nav-item a", "menu item"),
     {
-        content: "Click on a menu item",
-        trigger: ":iframe .top_menu .nav-item a",
-        run: "click",
-    },
-    {
-        content: "Click on 'Link' to open Link Dialog",
-        trigger: ':iframe .o_edit_menu_popover a.js_edit_menu',
+        content: "Click on edit menu to open Link Dialog",
+        trigger: '.o-we-linkpopover a.js_edit_menu',
         run: "click",
     },
     {
@@ -55,6 +51,21 @@ registerWebsitePreviewTour('edit_megamenu', {
     {
         trigger: '.oe_menu_editor [data-is-mega-menu="true"] .js_menu_label:contains("Megaaaaa!")',
     },
+    // This step can be removed once the extra menu items dropdown
+    // autoclosing bug is fixed
+    {
+        content: `Drag "Megaaaaa!" menu below "Home" menu`,
+        trigger: '.oe_menu_editor li:contains("Megaaaaa!") .fa-bars',
+        run(helpers) {
+            return helpers.drag_and_drop('.oe_menu_editor li:contains("Home")', {
+                position: {
+                    top: 57,
+                    left: 5,
+                },
+                relative: true,
+            });
+        },
+    },
     {
         content: "Save the website menu with a new mega menu",
         trigger: ".modal .modal-footer button:contains(save)",
@@ -63,28 +74,17 @@ registerWebsitePreviewTour('edit_megamenu', {
     {
         trigger: "body:not(:has(.modal))",
     },
-    {
-        trigger: '#oe_snippets.o_loaded',
-    },
-    {
-        trigger: ".o_website_preview.editor_enable.editor_has_snippets:not(.o_is_blocked)"
-    },
     // Edit a menu item
-    clickOnExtraMenuItem({}, true),
     toggleMegaMenu({}),
-    {
-        content: "Select the last menu link of the first column",
-        trigger: ':iframe .s_mega_menu_odoo_menu .row > div:first-child .nav > :nth-child(6)', // 6th is the last one
-        run: "click",
-    },
+    ...openLinkPopup(":iframe .s_mega_menu_odoo_menu .row > div:first-child .nav > a:nth-child(6)", "last child"),
     {
         content: "Hit the delete button to remove the menu link",
-        trigger: ':iframe .oe_overlay .oe_snippet_remove',
+        trigger: '.o-we-linkpopover a.o_we_remove_link',
         run: "click",
     },
     {
         content: "Check that the last menu link was deleted",
-        trigger: ':iframe .s_mega_menu_odoo_menu .row > div:first-child .nav:not(:has(:nth-child(6)))',
+        trigger: ':iframe .s_mega_menu_odoo_menu .row > div:first-child .nav:not(:has(a:nth-child(6)))',
     },
     {
         content: "Click on the first title item.",
@@ -113,8 +113,7 @@ registerWebsitePreviewTour('edit_megamenu', {
         run: "press ArrowDown",
     },
     ...clickOnSave(),
-    clickOnExtraMenuItem({}, true),
-    toggleMegaMenu(),
+    toggleMegaMenu({}),
     {
         content: "The menu item should have been renamed.",
         trigger: ':iframe .o_mega_menu h4:contains("New Menu Item")',

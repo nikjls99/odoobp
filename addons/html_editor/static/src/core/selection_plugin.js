@@ -210,6 +210,9 @@ export class SelectionPlugin extends Plugin {
             }
         });
         this.addDomListener(this.editable, "mousedown", (ev) => {
+            if (!ev.target.isContentEditable) {
+                this.dispatchTo("selection_leave_handlers");
+            }
             if (ev.detail >= 3) {
                 this.correctTripleClick = true;
             }
