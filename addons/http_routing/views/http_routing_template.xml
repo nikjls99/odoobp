@@ -103,6 +103,7 @@
     <template id="403">
         <t t-call="web.frontend_layout">
             <div id="wrap">
+                <div class="oe_structure" id="403_layout_1"></div>
                 <div class="container">
                     <h1 class="mt-5">403: Forbidden</h1>
                     <p>The page you were looking for could not be authorized.</p>
@@ -115,6 +116,7 @@
                             <t t-call="http_routing.error_message"/>
                         </div>
                     </t>
+                <div class="oe_structure" id="403_layout_2"></div>
             </div>
         </t>
     </template>
