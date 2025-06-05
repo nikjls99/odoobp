@@ -667,3 +667,23 @@ registry.category("web_tour.tours").add("test_combo_preparation_receipt_layout",
             },
         ].flat(),
 });
+
+registry.category("web_tour.tours").add("test_customer_alone_saved", {
+    steps: () =>
+        [
+            Chrome.startPoS(),
+            Dialog.confirm("Open Register"),
+            FloorScreen.clickTable("5"),
+            ProductScreen.clickDisplayedProduct("Product 1"),
+            Chrome.clickPlanButton(),
+            FloorScreen.clickTable("4"),
+            Chrome.clickPlanButton(),
+            FloorScreen.clickTable("5"),
+            ProductScreen.clickPartnerButton(),
+            ProductScreen.clickCustomer("Deco Addict"),
+            Chrome.clickOrders(),
+            Chrome.clickPlanButton(),
+            FloorScreen.clickTable("5"),
+            ProductScreen.customerIsSelected("Deco Addict"),
+        ].flat(),
+});
