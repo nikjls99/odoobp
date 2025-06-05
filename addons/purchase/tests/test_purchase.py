@@ -697,6 +697,7 @@ class TestPurchase(AccountTestInvoicingCommon):
         po = po_form.save()
         self.assertEqual(po.order_line.name, '[Code 3] Name 3')
 
+<<<<<<< d123df0a0aacd88d89cefb51a795e7865374a46d
     def test_purchase_order_line_product_taxes_on_branch(self):
         """ Check taxes populated on PO lines from product on branch company.
             Taxes from the branch company should be taken with a fallback on parent company.
@@ -839,3 +840,38 @@ class TestPurchase(AccountTestInvoicingCommon):
         self.assertEqual(po.amount_untaxed, 15.0)
         po.company_id = company_a.id
         self.assertEqual(po.amount_untaxed, 10.0)
+||||||| 3f64c4dc6de47beebffbde424b92fff0e0c22fd3
+        self.assertEqual(po.order_line[0].price_unit, 3.0)
+=======
+        self.assertEqual(po.order_line[0].price_unit, 3.0)
+
+    def test_action_view_po_when_product_template_archived(self):
+        """
+        Test to ensure that the purchased_product_qty value remains the same
+        after archiving the product template. Also check that the purchased smart
+        button returns the correct purchase order lines.
+        """
+        po = self.env['purchase.order'].create({
+            'partner_id': self.partner_a.id,
+            'order_line': [
+                Command.create({
+                    'product_id': self.product_a.id,
+                    'product_qty': 10,
+                    'price_unit': 1,
+                }),
+            ],
+        })
+        po.button_confirm()
+        product_tmpl = self.product_a.product_tmpl_id
+        self.assertEqual(product_tmpl.purchased_product_qty, 10)
+
+        product_tmpl.action_archive()
+        # Need to flush the recordsets to recalculate the purchased_product_qty after archiving
+        product_tmpl.invalidate_recordset()
+
+        self.assertEqual(product_tmpl.purchased_product_qty, 10)
+
+        action = product_tmpl.action_view_po()
+        action_record = self.env[action['res_model']].search(action['domain'])
+        self.assertEqual(action_record, po.order_line)
+>>>>>>> 667eafd2fffcf872ce517adbbc164b3dd97618fc
