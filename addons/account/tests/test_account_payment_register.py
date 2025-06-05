@@ -170,6 +170,13 @@ class TestAccountPaymentRegister(AccountTestInvoicingCommon):
             'company_ids': [Command.set(cls.branch.ids)],
         })
 
+    @classmethod
+    def get_wizard_available_journals(cls, wizard):
+        return wizard.available_journal_ids.filtered_domain([
+            *cls.env['account.journal']._check_company_domain(wizard.company_id),
+            ('type', 'in', ('bank', 'cash')),
+        ])
+
     def test_register_payment_single_batch_grouped_keep_open_lower_amount(self):
         ''' Pay 800.0 with 'open' as payment difference handling on two customer invoices (1000 + 2000). '''
         active_ids = (self.out_invoice_1 + self.out_invoice_2).ids
@@ -1523,17 +1530,15 @@ class TestAccountPaymentRegister(AccountTestInvoicingCommon):
 
         self.assertEqual(wizard.amount, 39.50)
 
-    def test_group_payment_method_with_branch(self):
+    def test_group_payment_method_with_branch_same_receivable(self):
+        """
+        Test register payment with branches when same receivable account is used in all branches
+        We test different combinations of invoices and selected companies
+        """
         # create a new branch
-        self.env.company.write({
-            'child_ids': [
-                Command.create({'name': 'Branch A'}),
-                Command.create({'name': 'Branch B'}),
-            ],
-        })
-        self.cr.precommit.run()  # load the CoA
+        self.setup_company_data("Branch A", parent_id=self.env.company.id)['company']
 
-        # create an invoice on the new branch
+        # create invoices on branches
         branch_invoices = self.env['account.move']
         for idx, branch in enumerate(self.env.company.child_ids):
             self.env["account.journal"].create({
@@ -1542,13 +1547,45 @@ class TestAccountPaymentRegister(AccountTestInvoicingCommon):
                 'name': f'{branch.name} journal',
                 'type': 'bank',
             })
-            receivable_account = self.env['account.account'].create({
-                'name': 'Receivable Account',
-                'code': f'{idx}234567',
-                'account_type': 'asset_receivable',
-                'reconcile': True,
+            branch_invoices |= self.init_invoice('out_invoice', products=self.product_a, company=branch)
+
+        parent_invoice = self.init_invoice('out_invoice', products=self.product_a)
+        (branch_invoices | parent_invoice).action_post()
+
+        cases = [
+            {'invoices': branch_invoices[0] + parent_invoice, 'companies': (self.branch + self.env.company), 'expected_companies': self.env.company},
+            {'invoices': branch_invoices, 'companies': self.env.company.child_ids, 'expected_companies': self.env.company},
+            {'invoices': branch_invoices + parent_invoice, 'companies': self.env.company._accessible_branches(), 'expected_companies': self.env.company},
+            {'invoices': branch_invoices[0], 'companies': self.branch, 'expected_companies': (self.env.company + self.branch)},
+        ]
+
+        for i, case in enumerate(cases):
+            invoices, companies, expected_companies = case.values()
+            with self.subTest(index=i, invoices=invoices.mapped('name'), companies=companies.mapped('name')):
+                wizard = self.env['account.payment.register'].with_context(allowed_company_ids=companies.ids, active_model='account.move', active_ids=invoices.ids).create({})
+                available_journals = self.get_wizard_available_journals(wizard)
+                self.assertEqual(available_journals.company_id, expected_companies)
+                wizard._create_payments()
+                invoices.line_ids.filtered(lambda l: l.display_type == 'payment_term').remove_move_reconcile()
+
+    def test_group_payment_method_with_branch_different_receivable(self):
+        """
+        Test register payment with branches when different receivable accounts are used in each branch
+        We test different combinations of invoices and selected companies
+        """
+        # create a new branch
+        self.setup_company_data("Branch A", parent_id=self.env.company.id)['company']
+
+        # create invoices on branches
+        branch_invoices = self.env['account.move']
+        for idx, branch in enumerate(self.env.company.child_ids):
+            self.env["account.journal"].create({
+                'code': 'TEST',
                 'company_id': branch.id,
+                'name': f'{branch.name} journal',
+                'type': 'bank',
             })
+            receivable_account = self.company_data['default_account_receivable'].with_company(branch).copy({'company_id': branch.id})
             self.partner_a.with_company(branch).write({
                 'property_account_receivable_id': receivable_account.id,
             })
@@ -1557,28 +1594,26 @@ class TestAccountPaymentRegister(AccountTestInvoicingCommon):
         parent_invoice = self.init_invoice('out_invoice', products=self.product_a)
         (branch_invoices | parent_invoice).action_post()
 
-        # branch1 + parent
-        case1 = branch_invoices[0] + parent_invoice
-        # branch1 + branch2
-        case2 = branch_invoices
-        # branch1 + branch2 + parent
-        case3 = branch_invoices + parent_invoice
+        cases = [
+            {'invoices': branch_invoices[0] + parent_invoice, 'companies': (self.branch + self.env.company), 'expected_companies': self.env.company, 'should_raise': True},
+            {'invoices': branch_invoices, 'companies': self.env.company.child_ids, 'expected_companies': self.env.company, 'should_raise': True},
+            {'invoices': branch_invoices + parent_invoice, 'companies': self.env.company._accessible_branches(), 'expected_companies': self.env.company, 'should_raise': True},
+            {'invoices': branch_invoices[0], 'companies': self.branch, 'expected_companies': (self.env.company + self.branch), 'should_raise': False},
+        ]
 
-        wizard = self.env['account.payment.register'].with_context(active_model='account.move', active_ids=case1.ids).create({})
-        # When user select branch + parent, allow only parent company journals
-        self.assertTrue(wizard.journal_id.company_id == self.env.company)
-
-        # When user select sibling companies, group payments are not allowed
-        with self.assertRaises(UserError, msg="You can't create payments for entries belonging to different branches."):
-            self.env['account.payment.register'].with_context(active_model='account.move', active_ids=case2.ids).create({})
-
-        wizard = self.env['account.payment.register'].with_context(active_model='account.move', active_ids=case3.ids).create({})
-        available_journals = wizard.available_journal_ids.filtered_domain([
-            *self.env['account.journal']._check_company_domain(wizard.company_id),
-            ('type', 'in', ('bank', 'cash')),
-        ])
-        # When user select 2+ branches and parent company allow to create payment on the parent journal
-        self.assertEqual(available_journals.company_id, self.env.company)
+        for i, case in enumerate(cases):
+            invoices, companies, expected_companies, should_raise = case.values()
+            with self.subTest(index=i, invoices=invoices.mapped('name'), companies=companies.mapped('name')):
+                wizard = self.env['account.payment.register'].with_context(allowed_company_ids=companies.ids, active_model='account.move', active_ids=invoices.ids).create({})
+                available_journals = self.get_wizard_available_journals(wizard)
+                self.assertEqual(available_journals.company_id, expected_companies)
+                if should_raise:
+                    # error should be raised as receivable account doesn't belong to the wizard's company
+                    with self.assertRaises(UserError):
+                        wizard._create_payments()
+                else:
+                    wizard._create_payments()
+                    invoices.line_ids.filtered(lambda l: l.display_type == 'payment_term').remove_move_reconcile()
 
     def test_epd_and_cash_rounding(self):
         cash_rounding = self.env['account.cash.rounding'].create({

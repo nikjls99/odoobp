@@ -257,8 +257,6 @@ class AccountPaymentRegister(models.TransientModel):
 
         if len(lines.company_id.root_id) > 1:
             raise UserError(_("You can't create payments for entries belonging to different companies."))
-        if len(lines.company_id.filtered(lambda c: c.root_id not in lines.company_id)) > 1:
-            raise UserError(_("You can't create payments for entries belonging to different branches."))
         if not lines:
             raise UserError(_("You can't open the register payment wizard without at least one receivable/payable line."))
 
@@ -319,7 +317,8 @@ class AccountPaymentRegister(models.TransientModel):
         '''
         payment_values = batch_result['payment_values']
         lines = batch_result['lines']
-        company = min(lines.company_id, key=lambda c: len(c.parent_ids))
+        from_sisters_companies = len(lines.company_id) > 1 and all(c.root_id not in self.env.companies for c in lines.company_id)
+        company = min(lines.company_id, key=lambda c: len(c.parent_ids)) if not from_sisters_companies else lines.company_id.root_id
 
         source_amount = abs(sum(lines.mapped('amount_residual')))
         if payment_values['currency_id'] == company.currency_id.id:
@@ -380,8 +379,11 @@ class AccountPaymentRegister(models.TransientModel):
                 wizard.can_group_payments = len(batch_result['lines']) != 1
             else:
                 # == Multiple batches: The wizard is not editable  ==
+                lines = sum((batch_result['lines'] for batch_result in batches), self.env['account.move.line'])
+                from_sisters_companies = len(lines.company_id) > 1 and all(c.root_id not in self.env.companies for c in lines.company_id)
+                company = min(lines.company_id, key=lambda c: len(c.parent_ids)) if not from_sisters_companies else lines.company_id.root_id
                 wizard.update({
-                    'company_id': min(batches, key=lambda batch: len(batch['lines'].company_id.parent_ids))['lines'].company_id.id,
+                    'company_id': company.id,
                     'partner_id': False,
                     'partner_type': False,
                     'payment_type': wizard_values_from_batch['payment_type'],
@@ -926,6 +928,7 @@ class AccountPaymentRegister(models.TransientModel):
 
     def _create_payments(self):
         self.ensure_one()
+        from_sisters_companies = False
         all_batches = self._get_batches()
         batches = []
         # Skip batches that are not valid (bank account not trusted but required)
@@ -961,6 +964,7 @@ class AccountPaymentRegister(models.TransientModel):
             # Don't group payments: Create one batch per move.
             if not self.group_payment:
                 new_batches = []
+                lines = self.env['account.move.line']
                 for batch_result in batches:
                     for line in batch_result['lines']:
                         new_batches.append({
@@ -971,7 +975,9 @@ class AccountPaymentRegister(models.TransientModel):
                             },
                             'lines': line,
                         })
+                        lines |= line
                 batches = new_batches
+                from_sisters_companies = len(lines.company_id) > 1 and all(c.root_id not in self.env.companies for c in lines.company_id)
 
             for batch_result in batches:
                 to_process.append({
@@ -980,9 +986,11 @@ class AccountPaymentRegister(models.TransientModel):
                     'batch': batch_result,
                 })
 
-        payments = self._init_payments(to_process, edit_mode=edit_mode)
-        self._post_payments(to_process, edit_mode=edit_mode)
-        self._reconcile_payments(to_process, edit_mode=edit_mode)
+        wizard = self.sudo() if from_sisters_companies else self
+
+        payments = wizard._init_payments(to_process, edit_mode=edit_mode)
+        wizard._post_payments(to_process, edit_mode=edit_mode)
+        wizard._reconcile_payments(to_process, edit_mode=edit_mode)
         return payments
 
     def action_create_payments(self):
