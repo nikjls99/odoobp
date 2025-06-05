@@ -45,9 +45,9 @@ export class Countdown extends Interaction {
         this.progressBarStyle = this.el.dataset.progressBarStyle;
         this.progressBarWeight = this.el.dataset.progressBarWeight;
 
-        this.layoutBackgroundColor = this.ensureCSSColor(this.el.dataset.layoutBackgroundColor);
-        this.progressBarColor = this.ensureCSSColor(this.el.dataset.progressBarColor);
-        this.textColor = this.ensureCSSColor(this.el.dataset.textColor);
+        this.layoutBackgroundColor = this.ensureCSSColor(this.el.dataset.layoutBackgroundColor || "");
+        this.progressBarColor = this.ensureCSSColor(this.el.dataset.progressBarColor || "");
+        this.textColor = this.ensureCSSColor(this.el.dataset.textColor || "");
 
         this.onlyOneUnit = this.display === "d";
         this.width = this.size;
