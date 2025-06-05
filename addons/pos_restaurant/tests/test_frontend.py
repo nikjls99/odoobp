@@ -450,7 +450,7 @@ class TestFrontend(TestFrontendCommon):
         })
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.start_tour(f"/pos/ui?config_id={self.main_pos_config.id}", 'MultiPreparationPrinter', login="pos_user")
+        self.start_pos_tour('MultiPreparationPrinter', login="pos_user")
 
     def test_user_on_residual_order(self):
         self.pos_config.write({'printer_ids': False})

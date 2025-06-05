@@ -20,6 +20,21 @@ import { delay } from "@odoo/hoot-dom";
 
 const ProductScreen = { ...ProductScreenPos, ...ProductScreenResto };
 
+function getOrderChanges() {
+    const order = posmodel.getOrder();
+    const orderChange = posmodel.changesToOrder(
+        order,
+        posmodel.config.preparationCategories,
+        false
+    );
+    return posmodel.generateOrderChange(
+        order,
+        orderChange,
+        Array.from(posmodel.config.preparationCategories),
+        false
+    );
+}
+
 function checkOrderChanges(expected_changes) {
     return [
         {
@@ -402,19 +417,7 @@ registry.category("web_tour.tours").add("PreparationPrinterContent", {
                 content: "Check if order preparation contains always Variant",
                 trigger: "body",
                 run: async () => {
-                    const order = posmodel.getOrder();
-                    const orderChange = posmodel.changesToOrder(
-                        order,
-                        posmodel.config.preparationCategories,
-                        false
-                    );
-                    const { orderData, changes } = posmodel.generateOrderChange(
-                        order,
-                        orderChange,
-                        Array.from(posmodel.config.preparationCategories),
-                        false
-                    );
-
+                    const { orderData, changes } = getOrderChanges();
                     orderData.changes = {
                         title: "new",
                         data: changes.new,
@@ -429,6 +432,30 @@ registry.category("web_tour.tours").add("PreparationPrinterContent", {
                     }
                     if (!rendered.innerHTML.includes("14:20")) {
                         throw new Error("14:20 not found in printed receipt");
+                    }
+                },
+            },
+            Chrome.clickPlanButton(),
+            FloorScreen.clickTable("2"),
+            ProductScreen.clickDisplayedProduct("Water"),
+            ...ProductScreen.clickSelectedLine("Water"),
+            ProductScreen.addInternalNote("To Serve"),
+            {
+                content: "Check if order preparation contains 'To Serve' order level internal note",
+                trigger: "body",
+                run: async () => {
+                    const changes = getOrderChanges();
+                    const rendered = renderToElement("point_of_sale.OrderChangeReceipt", {
+                        data: changes.orderData,
+                    });
+                    if (!rendered.innerHTML.includes("INTERNAL NOTE")) {
+                        throw new Error("'INTERNAL NOTE' not found in printed receipt");
+                    }
+                    if (!rendered.innerHTML.includes("To Serve")) {
+                        throw new Error("To Serve not found in printed receipt");
+                    }
+                    if (rendered.innerHTML.includes("colorIndex")) {
+                        throw new Error("colorIndex should not be displayed in printed receipt");
                     }
                 },
             },
@@ -455,18 +482,7 @@ registry.category("web_tour.tours").add("test_combo_preparation_receipt", {
                 content: "Check if order preparation has product correctly ordered",
                 trigger: "body",
                 run: async () => {
-                    const order = posmodel.getOrder();
-                    const orderChange = posmodel.changesToOrder(
-                        order,
-                        posmodel.config.preparationCategories,
-                        false
-                    );
-                    const { orderData, changes } = posmodel.generateOrderChange(
-                        order,
-                        orderChange,
-                        Array.from(posmodel.config.preparationCategories),
-                        false
-                    );
+                    const { orderData, changes } = getOrderChanges();
 
                     orderData.changes = {
                         title: "new",
