@@ -11,7 +11,13 @@
                 ('access_mode', '=', 'public'),
                 '&amp;',
                     ('access_mode', '=', 'groups'),
+<<<<<<< 01b8b94a70b8d021ab66c36c7d2537b7f23dfcf0
                     ('access_group_id', 'in', user.all_group_ids.ids),
+||||||| c1d88949a3c305b425ab3a862741ebab7b7cd344
+                    ('access_group_id', 'in', [g.id for g in user.groups_id]),
+=======
+                    ('access_group_id', 'in', user.groups_id.ids),
+>>>>>>> f7aca32725060f7edcae0b4632f0684b8393ac45
                 '&amp;',
                     ('access_mode', '=', 'members'),
                     ('member_partner_ids', 'in', [user.partner_id.id]),
@@ -56,7 +62,13 @@
                     ('mail_group_id.access_mode', '=', 'public'),
                     '&amp;',
                         ('mail_group_id.access_mode', '=', 'groups'),
+<<<<<<< 01b8b94a70b8d021ab66c36c7d2537b7f23dfcf0
                         ('mail_group_id.access_group_id', 'in', user.all_group_ids.ids),
+||||||| c1d88949a3c305b425ab3a862741ebab7b7cd344
+                        ('mail_group_id.access_group_id', 'in', [g.id for g in user.groups_id]),
+=======
+                        ('mail_group_id.access_group_id', 'in', user.groups_id.ids),
+>>>>>>> f7aca32725060f7edcae0b4632f0684b8393ac45
                     '&amp;',
                         ('mail_group_id.access_mode', '=', 'members'),
                         ('mail_group_id.member_partner_ids', 'in', [user.partner_id.id]),
@@ -83,7 +95,13 @@
                         ('mail_group_id.access_mode', '=', 'public'),
                         '&amp;',
                             ('mail_group_id.access_mode', '=', 'groups'),
+<<<<<<< 01b8b94a70b8d021ab66c36c7d2537b7f23dfcf0
                             ('mail_group_id.access_group_id', 'in', [g.id for g in user.all_group_ids]),
+||||||| c1d88949a3c305b425ab3a862741ebab7b7cd344
+                            ('mail_group_id.access_group_id', 'in', [g.id for g in user.groups_id]),
+=======
+                            ('mail_group_id.access_group_id', 'in', user.groups_id.ids),
+>>>>>>> f7aca32725060f7edcae0b4632f0684b8393ac45
                         '&amp;',
                             ('mail_group_id.access_mode', '=', 'members'),
                             ('mail_group_id.member_partner_ids', 'in', [user.partner_id.id]),
