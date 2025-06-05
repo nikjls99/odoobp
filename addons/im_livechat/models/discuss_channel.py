@@ -329,6 +329,8 @@ class DiscussChannel(models.Model):
                 parts.append(Markup("<strong>%s</strong><br/>") % html2plaintext(message.body))
             else:
                 parts.append(Markup("%s<br/>") % html2plaintext(message.body))
+            for attachment in message.attachment_ids:
+                parts.append(Markup("%s<br/>") % self.env["ir.qweb"]._render("im_livechat.filebox", {"attachment": attachment}))
             last_msg_from_chatbot = message.author_id == chatbot_op
         return Markup("").join(parts)
 

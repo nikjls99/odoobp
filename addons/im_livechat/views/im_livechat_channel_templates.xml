@@ -109,6 +109,20 @@
             </t>
         </template>
 
+        <template id="filebox" name="Convert attachment to filebox">
+            <t>
+                <span class="o_file_box" contenteditable="false">
+                    <span class="d-flex flex-grow-1 align-items-center alert alert-info">
+                        <span class="o_file_image d-flex o_image user-select-none"
+                            t-att-title="attachment.name" t-att-data-mimetype="attachment.mimetype"/>
+                        <span class="o_file_name_container mx-2">
+                            <a class="o_link_readonly o-contenteditable-false" t-att-href="attachment.download_url" t-out="attachment.name" contenteditable="false"/>
+                        </span>
+                    </span>
+                </span>
+            </t>
+        </template>
+
 
     </data>
 </odoo>
