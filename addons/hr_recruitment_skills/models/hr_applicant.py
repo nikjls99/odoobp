@@ -8,8 +8,14 @@ from odoo import fields, models, Command, api
 class HrApplicant(models.Model):
     _inherit = "hr.applicant"
 
-    applicant_skill_ids = fields.One2many(
-        "hr.applicant.skill", "applicant_id", string="Skills", copy=True
+    applicant_skill_ids = fields.One2many("hr.applicant.skill", "applicant_id", string="Skills", copy=True)
+    current_applicant_skill_ids = fields.One2many(
+        "hr.applicant.skill",
+        "applicant_id",
+        string="Valid Skills",
+        copy=False,
+        compute="_compute_current_applicant_skills",
+        readonly=False,
     )
     skill_ids = fields.Many2many("hr.skill", compute="_compute_skill_ids", store=True)
     matching_skill_ids = fields.Many2many(
@@ -22,33 +28,58 @@ class HrApplicant(models.Model):
         string="Missing Skills",
         compute="_compute_matching_skill_ids",
     )
-    matching_score = fields.Float(
-        string="Matching Score(%)", compute="_compute_matching_skill_ids"
-    )
+    matching_score = fields.Integer(string="Matching Score", compute="_compute_matching_skill_ids")
 
     @api.depends("applicant_skill_ids.skill_id")
     def _compute_skill_ids(self):
         for applicant in self:
             applicant.skill_ids = applicant.applicant_skill_ids.skill_id
 
-    @api.depends_context("active_id")
-    @api.depends("skill_ids")
+    @api.depends("applicant_skill_ids")
+    def _compute_current_applicant_skills(self):
+        for applicant in self:
+            applicant.current_applicant_skill_ids = applicant.applicant_skill_ids.filtered(
+                lambda AS: not AS.valid_to or AS.valid_to >= fields.Date.today()
+            )
+
+    @api.depends_context("matching_job_id")
+    @api.depends("current_applicant_skill_ids", "type_id", "job_id", "job_id.job_skill_ids", "job_id.expected_degree")
     def _compute_matching_skill_ids(self):
-        job_id = self.env.context.get("active_id")
-        if not job_id:
-            self.matching_skill_ids = False
-            self.missing_skill_ids = False
-            self.matching_score = 0
-        else:
-            for applicant in self:
-                job_skills = self.env["hr.job"].browse(job_id).skill_ids
-                applicant.matching_skill_ids = job_skills & applicant.skill_ids
-                applicant.missing_skill_ids = job_skills - applicant.skill_ids
-                applicant.matching_score = (
-                    (len(applicant.matching_skill_ids) / len(job_skills)) * 100
-                    if job_skills
-                    else 0
+        # TODO: The context seems to persist a bit too much
+        # When clicking 'Search Matching Applicant' on a job, "matching_job_id" is filled with the id of the job position.
+        matching_job_id = self.env.context.get("matching_job_id")
+        matching_job = self.env["hr.job"].browse(matching_job_id)
+        for applicant in self:
+            job = matching_job if matching_job else applicant.job_id
+            if job and (job.job_skill_ids or job.expected_degree):
+                job_skills = job.job_skill_ids
+                job_degree = job.expected_degree.score * 100
+                job_total = sum(job_skills.mapped("level_progress")) + job_degree
+                job_skill_map = {js.skill_id: js.level_progress for js in job_skills}
+
+                matching_applicant_skills = applicant.current_applicant_skill_ids.filtered(
+                    lambda a: a.skill_id in job_skill_map
                 )
+                applicant_degree = applicant.type_id.score * 100 if job_degree > 1 else 0
+                applicant_total = (
+                    sum(
+                        min(skill.level_progress, job_skill_map[skill.skill_id] * 2)
+                        for skill in matching_applicant_skills
+                    )
+                    + applicant_degree
+                )
+
+                matching_skill_ids = matching_applicant_skills.mapped("skill_id")
+                missing_skill_ids = job_skills.mapped("skill_id") - matching_applicant_skills.mapped("skill_id")
+                matching_score = round(applicant_total / job_total * 100)
+
+                applicant.matching_skill_ids = matching_skill_ids
+                applicant.missing_skill_ids = missing_skill_ids
+                applicant.matching_score = matching_score
+            else:
+                applicant.matching_skill_ids = False
+                applicant.missing_skill_ids = False
+                applicant.matching_score = False
 
     def _get_employee_create_vals(self):
         vals = super()._get_employee_create_vals()
@@ -118,7 +149,7 @@ class HrApplicant(models.Model):
     def action_add_to_job(self):
         self.with_context(just_moved=True).write(
             {
-                "job_id": self.env["hr.job"].browse(self.env.context.get("active_id")).id,
+                "job_id": self.env["hr.job"].browse(self.env.context.get("matching_job_id")).id,
                 "stage_id": self.env.ref("hr_recruitment.stage_job0").id,
             }
         )
@@ -126,16 +157,19 @@ class HrApplicant(models.Model):
         action["context"] = literal_eval(action["context"].replace("active_id", str(self.job_id.id)))
         return action
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if "current_applicant_skill_ids" in vals:
+                vals["applicant_skill_ids"] = vals.pop("current_applicant_skill_ids")
+        return super().create(vals_list)
+
     def write(self, vals):
-        if (
-            "applicant_skill_ids" in vals
-            and self.pool_applicant_id
-            and (not self.is_pool_applicant)
-        ):
+        if "current_applicant_skill_ids" in vals:
+            vals["applicant_skill_ids"] = vals.pop("current_applicant_skill_ids")
+        if "applicant_skill_ids" in vals:
             for applicant in self:
-                translated_skills = applicant._map_applicant_skill_ids_to_talent_skill_ids(vals)
-                applicant.pool_applicant_id.write(
-                    {"applicant_skill_ids": translated_skills}
-                )
-        res = super().write(vals)
-        return res
+                if applicant.pool_applicant_id and (not applicant.is_pool_applicant):
+                    translated_skills = applicant._map_applicant_skill_ids_to_talent_skill_ids(vals)
+                    applicant.pool_applicant_id.write({"applicant_skill_ids": translated_skills})
+        return super().write(vals)

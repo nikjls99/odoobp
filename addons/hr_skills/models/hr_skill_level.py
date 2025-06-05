@@ -7,7 +7,7 @@ from odoo import api, fields, models, _
 class HrSkillLevel(models.Model):
     _name = 'hr.skill.level'
     _description = "Skill Level"
-    _order = "level_progress desc"
+    _order = "level_progress asc"
 
     skill_type_id = fields.Many2one('hr.skill.type', index='btree_not_null', ondelete='cascade')
     name = fields.Char(required=True)

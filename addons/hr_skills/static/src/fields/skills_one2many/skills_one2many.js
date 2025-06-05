@@ -42,7 +42,7 @@ export class SkillsListRenderer extends CommonSkillsListRenderer {
     async openSkillsReport() {
         // fetch id through employee or public.employee
         const id = this.env.model.root.data.id || this.env.model.root.data.employee_id.id;
--        this.actionService.doAction({
+        this.actionService.doAction({
             type: "ir.actions.act_window",
             name: _t("Skills Report"),
             res_model: "hr.employee.skill.log",
@@ -86,10 +86,7 @@ export class SkillsX2ManyField extends X2ManyField {
             activeField: this.activeField,
             activeActions: this.activeActions,
             getList: () => this.list,
-            saveRecord: async (record) => {
-                await saveRecord(record);
-                await this.props.record.save();
-            },
+            saveRecord: saveRecord,
             updateRecord: updateRecord,
             withParentId: this.props.widget !== "many2many",
         });

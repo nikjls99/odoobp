@@ -19,6 +19,8 @@ class HrSkillType(models.Model):
     skill_ids = fields.One2many('hr.skill', 'skill_type_id', string="Skills")
     skill_level_ids = fields.One2many('hr.skill.level', 'skill_type_id', string="Levels", copy=True)
     color = fields.Integer('Color', default=_get_default_color)
+    number_of_levels = fields.Integer(compute="_compute_number_of_levels", store=True, readonly=False)
+    is_certification = fields.Boolean('Certification', default=False)
 
     @api.constrains('skill_ids', 'skill_level_ids')
     def _check_no_null_skill_or_skill_level(self):
@@ -30,6 +32,24 @@ class HrSkillType(models.Model):
             raise ValidationError(
                 _("The following skills type must contain at least one skill and one level: %s",
                   "\n".join(skill_type.name for skill_type in incorrect_skill_type)))
+
+    @api.depends('is_certification')
+    def _compute_display_name(self):
+        for skill_type in self:
+            if skill_type.is_certification:
+                skill_type.display_name = skill_type.name + "\U0001F396"
+            else:
+                skill_type.display_name = skill_type.name
+
+    @api.depends('skill_level_ids')
+    def _compute_number_of_levels(self):
+        level_count_by_skill_type = dict(self.env['hr.skill.level']._read_group(
+            domain=[('skill_type_id', 'in', self.ids)],
+            groupby=['skill_type_id'],
+            aggregates=['__count']
+        ))
+        for skill_type in self:
+            skill_type.number_of_levels = level_count_by_skill_type.get(skill_type, 0)
 
     @api.onchange('skill_level_ids')
     def _onchange_skill_level_ids(self):

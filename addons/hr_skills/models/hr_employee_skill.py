@@ -21,6 +21,10 @@ class HrEmployeeSkill(models.Model):
                                     required=True, ondelete='cascade')
     level_progress = fields.Integer(related='skill_level_id.level_progress')
     color = fields.Integer(related="skill_type_id.color")
+    number_of_levels = fields.Integer(related="skill_type_id.number_of_levels")
+    is_certification = fields.Boolean(related="skill_type_id.is_certification")
+    valid_from = fields.Date(default=fields.Date.today())
+    valid_to = fields.Date()
 
     _unique_skill = models.Constraint(
         'unique (employee_id, skill_id)',

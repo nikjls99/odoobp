@@ -12,6 +12,10 @@
     <record id="hr_skill_type_marketing" model="hr.skill.type">
         <field name="name">Marketing</field>
     </record>
+    <record id="hr_skill_type_certification" model="hr.skill.type">
+        <field name="name">Certifications</field>
+        <field name="is_certification">1</field>
+    </record>
 
     <!--Skill Levels-->
     <!--Programming-->
@@ -91,6 +95,11 @@
         <field name="name">Expert</field>
         <field name="level_progress">100</field>
         <field name="skill_type_id" ref="hr_skill_type_it"/>
+    </record>
+    <record id="hr_skill_level_certified_certification" model="hr.skill.level">
+        <field name="name">Certified</field>
+        <field name="level_progress">100</field>
+        <field name="skill_type_id" ref="hr_skill_type_certification"/>
     </record>
 
     <!-- Skills -->
@@ -302,6 +311,16 @@
     <record id="hr_skill_it_governance_compliance" model="hr.skill">
         <field name="name">IT governance and compliance (GDPR,HIPAA,...)</field>
         <field name="skill_type_id" ref="hr_skill_type_it"/>
+    </record>
+
+
+    <record id="hr_skill_it_odoo" model="hr.skill">
+        <field name="name">Odoo</field>
+        <field name="skill_type_id" ref="hr_skill_type_certification"/>
+    </record>
+    <record id="hr_skill_it_scrum_master" model="hr.skill">
+        <field name="name">Scrum Master</field>
+        <field name="skill_type_id" ref="hr_skill_type_certification"/>
     </record>
 </data>
 </odoo>
