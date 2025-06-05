@@ -370,7 +370,7 @@ publicWidget.registry.WebsiteSaleCheckout = publicWidget.Widget.extend({
      * @return {void}
      */
     _updateCartSummaries(result) {
-        const parentElements = document.querySelectorAll('div.o_mobile_summary', 'div.o_total_card');
+        const parentElements = document.querySelectorAll('div.o_mobile_summary + o_cart_summary_offcanvas', 'div.o_total_card');
 
         parentElements.forEach(el => {
             this._updateCartSummary(result, el);
