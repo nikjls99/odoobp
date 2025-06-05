@@ -11,6 +11,7 @@ class DiscussChannel(models.Model):
         "When created from an operator, whether the channel is yet to be opened on the visitor side.",
     )
     livechat_visitor_id = fields.Many2one('website.visitor', string='Visitor', index='btree_not_null')
+    requested_by_operator = fields.Boolean(compute="_compute_requested_by_operator")
 
     def channel_pin(self, pinned=False):
         """ Override to clean an empty livechat channel.
@@ -24,17 +25,10 @@ class DiscussChannel(models.Model):
         if self.livechat_active and not self.message_ids:
             self.sudo().unlink()
 
-    def _field_store_repr(self, field_name):
-        if field_name == "requested_by_operator":
-            return [
-                Store.Attr(
-                    "requested_by_operator",
-                    # sudo - res.users: can access operator's user even if he left the channel.
-                    lambda channel: channel.create_uid in channel.livechat_operator_id.sudo().user_ids,
-                    predicate=lambda channel: channel.livechat_visitor_id,
-                ),
-            ]
-        return super()._field_store_repr(field_name)
+    def _compute_requested_by_operator(self):
+        for channel in self:
+            # sudo - res.users: can access operator's user even if he left the channel.
+            channel.requested_by_operator = channel.create_uid in channel.livechat_operator_id.sudo().user_ids
 
     def _to_store_defaults(self, for_current_user=True):
         return super()._to_store_defaults(for_current_user=for_current_user) + [
@@ -51,7 +45,9 @@ class DiscussChannel(models.Model):
                 predicate=lambda channel: channel.livechat_visitor_id
                 and self.livechat_visitor_id.has_access("read"),
             ),
-            "requested_by_operator",
+            Store.Attr(
+                "requested_by_operator", predicate=lambda channel: channel.livechat_visitor_id
+            ),
         ]
 
     def _get_visitor_history(self, visitor):
