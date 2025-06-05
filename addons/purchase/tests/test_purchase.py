@@ -3,7 +3,7 @@
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import tagged, Form
 from odoo import Command, fields
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 
 from datetime import timedelta
@@ -928,3 +928,33 @@ class TestPurchase(AccountTestInvoicingCommon):
         self.assertEqual(len(matching_records), 2)
         self.assertEqual(matching_records.account_move_id, vendor_bill)
         self.assertEqual(matching_records.purchase_order_id, purchase_order)
+
+    def test_unlock_purchase_order(self):
+        """Test that the purchase order can be unlocked."""
+        po_form = Form(self.env['purchase.order'])
+        po_form.partner_id = self.partner_a
+        with po_form.order_line.new() as po_line:
+            po_line.product_id = self.product
+            po_line.product_qty = 1.0
+        po = po_form.save()
+        po.button_confirm()
+        self.env.company.po_lock = 'lock'
+        po.button_lock()
+
+        # Create a regular purchase user (not allowed to unlock) and a purchase manager (allowed to unlock)
+        user_1, manager_1 = self.env['res.users'].create([{
+            'login': 'user1',
+            'name': 'user1',
+            'email': 'user1@example.com',
+            'group_ids': self.env.ref('purchase.group_purchase_user'),
+        }, {
+            'login': 'manager_1',
+            'name': 'manager_1',
+            'email': 'manager_1@example.com',
+            'group_ids': self.env.ref('purchase.group_purchase_manager'),
+        }])
+        with self.assertRaises(AccessError):
+            po.with_user(user_1).button_unlock()
+
+        po.with_user(manager_1).button_unlock()
+        self.assertFalse(po.locked)

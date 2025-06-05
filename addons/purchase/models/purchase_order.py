@@ -12,7 +12,7 @@ from odoo import api, Command, fields, models, _
 from odoo.osv import expression
 from odoo.tools import format_amount, format_date, formatLang, groupby, OrderedSet, SQL
 from odoo.tools.float_utils import float_is_zero, float_repr
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class PurchaseOrder(models.Model):
@@ -539,6 +539,11 @@ class PurchaseOrder(models.Model):
         return True
 
     def button_cancel(self):
+        # Locked purchase orders cannot be cancelled. To cancel them, they must be unlocked first.
+        locked_purchase_orders = self.filtered(lambda po: po.locked)
+        if locked_purchase_orders:
+            raise UserError("Unable to cancel purchase order(s): %s. You must first unlock them." % ', '.join(locked_purchase_orders.mapped('display_name')))
+
         purchase_orders_with_invoices = self.filtered(lambda po: any(i.state not in ('cancel', 'draft') for i in po.invoice_ids))
         if purchase_orders_with_invoices:
             raise UserError(_("Unable to cancel purchase order(s): %s. You must first cancel their related vendor bills.", purchase_orders_with_invoices.mapped('display_name')))
@@ -548,8 +553,8 @@ class PurchaseOrder(models.Model):
         self.locked = True
 
     def button_unlock(self):
-        if self.lock_confirmed_po == 'lock':
-            raise UserError(_("Unlocking the order is not allowed as 'Lock Confirmed Orders' is enabled."))
+        if not self.env.user.has_group('purchase.group_purchase_manager'):
+            raise AccessError(_('You are not allowed to unlock this purchase order. Only a purchase manager can do it.'))
         self.locked = False
 
     def _prepare_supplier_info(self, partner, line, price, currency):
