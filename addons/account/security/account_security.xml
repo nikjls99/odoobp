@@ -93,6 +93,9 @@
     <record id="group_purchase_receipts" model="res.groups">
         <field name="name">Purchase Receipt</field>
     </record>
+    <record id="group_purchase_all_invoicing_rights" model="res.groups">
+        <field name="name">All Invoicing Rights</field>
+    </record>
 
     <!-- Add a new setting that can be enabled to allow the user to "trust" a partner bank account -->
     <record model="res.groups.privilege" id="res_group_privilege_accounting_bank">
