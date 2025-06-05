@@ -1,3 +1,19 @@
+.options-container[data-container-title="Products Page"] {
+  > div:first-child { // Title
+    display: none !important;
+  }
+
+  .o_we_sublevel_0 {
+    padding-top: map-get($map: $spacers, $key: 2);
+    margin-top: 0;
+
+    > .hb-row-label {
+      font-size: $o-we-sidebar-content-main-title-font-size;
+      color: $o-we-sidebar-content-main-title-color !important;
+    }
+  }
+}
+
 .o_wsale_soptions_menu_sizes {
   align-self: flex-start !important;
 
@@ -34,6 +50,7 @@
       &.selected {
         background-color: transparent;
       }
+
       &.select {
         background-color: #b1d4f1;
       }
@@ -49,4 +66,3 @@
   vertical-align: middle;
   border-radius: 50%;
 }
-

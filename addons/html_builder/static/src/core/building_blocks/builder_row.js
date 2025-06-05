@@ -48,7 +48,7 @@ export class BuilderRow extends Component {
     }
 
     getLevelClass() {
-        return this.props.level ? `o_we_sublevel_${this.props.level}` : "";
+        return `o_we_sublevel_${this.props.level || 0}`;
     }
 
     toggleCollapseContent() {
