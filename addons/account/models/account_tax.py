@@ -69,6 +69,67 @@ class AccountTaxGroup(models.Model):
         for group in self:
             group.country_id = group.company_id.account_fiscal_country_id or group.company_id.country_id
 
+<<<<<<< 5965317e05eb1ae42ed4311c34fbe6b9c3243a6e
+||||||| 81aff3dfe17aa3fe530ff7f82740c226b3eae169
+    @api.model
+    def _check_misconfigured_tax_groups(self, company, countries):
+        """ Searches the tax groups used on the taxes from company in countries that don't have
+        at least a tax payable account, a tax receivable account or an advance tax payment account.
+
+        :return: A boolean telling whether or not there are misconfigured groups for any
+                 of these countries, in this company
+        """
+        return bool(self.env['account.tax'].search([
+            *self.env['account.tax']._check_company_domain(company),
+            ('country_id', 'in', countries.ids),
+            '|',
+            ('tax_group_id.tax_payable_account_id', '=', False),
+            ('tax_group_id.tax_receivable_account_id', '=', False),
+        ], limit=1))
+
+=======
+    @api.constrains('tax_payable_account_id', 'tax_receivable_account_id')
+    def _check_accounts_configuration(self):
+        account_fields = self.env['account.account']._fields
+        account_type_selection_values = dict(account_fields['account_type']._description_selection(self.env))
+        reconcile_field_name = account_fields['reconcile'].get_description(self.env)['string']
+        non_trade_field_name = account_fields['non_trade'].get_description(self.env)['string']
+
+        for group in self:
+            for field_name in ('tax_payable_account_id', 'tax_receivable_account_id'):
+                if group[field_name] and not (
+                    group[field_name].account_type in ('asset_receivable', 'liability_payable')
+                    and group[field_name].non_trade
+                ):
+                    raise ValidationError(
+                        self.env._(
+                            '%(tax_account)s (%(account_name)s) should be an account of type "%(receivable)s" or "%(payable)s" with both options "%(allow_reconciliation)s" and "%(non_trade)s" enabled.',
+                            tax_account=self._fields[field_name].get_description(self.env)['string'],
+                            account_name=group[field_name].display_name,
+                            receivable=account_type_selection_values['asset_receivable'],
+                            payable=account_type_selection_values['liability_payable'],
+                            allow_reconciliation=reconcile_field_name,
+                            non_trade=non_trade_field_name,
+                        ),
+                    )
+
+    @api.model
+    def _check_misconfigured_tax_groups(self, company, countries):
+        """ Searches the tax groups used on the taxes from company in countries that don't have
+        at least a tax payable account, a tax receivable account or an advance tax payment account.
+
+        :return: A boolean telling whether or not there are misconfigured groups for any
+                 of these countries, in this company
+        """
+        return bool(self.env['account.tax'].search([
+            *self.env['account.tax']._check_company_domain(company),
+            ('country_id', 'in', countries.ids),
+            '|',
+            ('tax_group_id.tax_payable_account_id', '=', False),
+            ('tax_group_id.tax_receivable_account_id', '=', False),
+        ], limit=1))
+
+>>>>>>> 8d42debdec0be267f6cac780b6210ce96f420c22
 
 class AccountTax(models.Model):
     _name = 'account.tax'
