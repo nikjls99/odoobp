@@ -604,6 +604,39 @@ class Properties(Field):
                 property_definition.pop('value', None)
         return values_list
 
+    def expression_getter(self, field_expr):
+        _fname, property_name = parse_field_expr(field_expr)
+        if not property_name:
+            raise ValueError(f"Missing property name for {self}")
+
+        def expression_property(record):
+            property_value = self.__get__(record)
+            value = property_value.get(property_name)
+            if value:
+                return value
+            # find definition to check the type
+            for definition in self._get_properties_definition(record) or ():
+                if definition.get('name') == property_name:
+                    break
+            else:
+                # definition not found
+                return value or False
+            if not value and definition['type'] in ('many2one', 'many2many'):
+                return record.env.get(definition.get('comodel'))
+            return value
+        return expression_property
+
+    def filter_function(self, records, field_expr, operator, value):
+        getter = self.expression_getter(field_expr)
+        domain = None
+        if operator == 'any' or isinstance(value, Domain):
+            domain = Domain(value).optimize(records)
+        elif operator == 'in' and isinstance(value, COLLECTION_TYPES) and isinstance(getter(records.browse()), BaseModel):
+            domain = Domain('id', 'in', value).optimize(records)
+        if domain is not None:
+            return lambda rec: domain.filter_records(getter(rec))
+        return super().filter_function(records, field_expr, operator, value)
+
     def property_to_sql(self, field_sql: SQL, property_name: str, model: BaseModel, alias: str, query: Query) -> SQL:
         check_property_field_value_name(property_name)
         return SQL("(%s -> %s)", field_sql, property_name)
@@ -673,20 +706,30 @@ class Properties(Field):
             combine_sql = SQL(" OR ") if operator == 'in' else SQL(" AND ")
             return SQL("(%s)", combine_sql.join(sqls))
 
-        sql_operator = SQL_OPERATORS[operator]
-        if operator in ('ilike', 'not ilike'):
-            value = f'%{value}%'
-            unaccent = model.env.registry.unaccent
-        else:
-            unaccent = lambda x: x  # noqa: E731
+        unaccent = lambda x: x  # noqa: E731
+        if operator.endswith('like'):
+            if operator.endswith('ilike'):
+                unaccent = model.env.registry.unaccent
+            if '=' in operator:
+                value = str(value)
+            else:
+                value = f'%{value}%'
+
+        try:
+            sql_operator = SQL_OPERATORS[operator]
+        except KeyError:
+            raise ValueError(f"Invalid operator {operator} for Properties")
 
         if isinstance(value, str):
             sql_left = SQL("(%s ->> %s)", raw_sql_field, property_name)  # JSONified value
             sql_right = SQL("%s", value)
-            return SQL(
+            sql = SQL(
                 "%s%s%s",
                 unaccent(sql_left), sql_operator, unaccent(sql_right),
             )
+            if Domain.is_negative_operator(operator):
+                sql = SQL("(%s OR %s IS NULL)", sql, sql_left)
+            return sql
 
         sql_right = SQL("%s", json.dumps(value))
         return SQL(
