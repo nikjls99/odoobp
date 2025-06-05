@@ -1443,6 +1443,10 @@ options.registry.WebsiteFieldEditor = FieldEditor.extend({
         }
 
         const field = Object.assign({}, this.fields[this._getFieldName()]);
+        if (field.relation === "mailing.list"){
+            field.fieldName = "name";
+        }
+
         const type = this._getFieldType();
 
         const list = document.createElement('we-list');
