@@ -940,10 +940,22 @@ class MailMessage(models.Model):
             ]
         return [field_name]
 
-    def _to_store_defaults(self):
+    def _to_store_defaults(self, for_current_user=False):
+        def attachment_extra_fields(message):
+            if for_current_user and message.is_current_user_or_guest_author:
+                return Store.Attr(
+                    "as_author_access_token", value=lambda a: a._get_author_access_token()
+                )
+            return []
         field_names = [
-            # sudo: mail.message - reading attachments on accessible message is allowed
-            Store.Many("attachment_ids", sort="id", sudo=True),
+            Store.Attr(
+                "attachment_ids",
+                lambda m: Store.Many(
+                    # sudo: mail.message - reading attachments on accessible message is allowed
+                    m.attachment_ids.sudo().sorted("id"),
+                    extra_fields=attachment_extra_fields(m),
+                ),
+            ),
             "body",
             "create_date",
             "date",

@@ -18,7 +18,8 @@ export class Attachment extends FileModelMixin(Record) {
         });
         return attachment;
     }
-
+    /** @type {string} */
+    as_author_access_token;
     thread = fields.One("Thread", { inverse: "attachments" });
     /** @type {string} */
     raw_access_token;
@@ -58,15 +59,13 @@ export class Attachment extends FileModelMixin(Record) {
      */
     async remove() {
         if (this.id > 0) {
-            const rpcParams = assignDefined(
-                { attachment_id: this.id },
-                { access_token: this.access_token }
+            await rpc(
+                "/mail/attachment/delete",
+                assignDefined(
+                    { attachment_id: this.id },
+                    { access_token: this.as_author_access_token }
+                )
             );
-            const thread = this.thread || this.message?.thread;
-            if (thread) {
-                Object.assign(rpcParams, thread.rpcParams);
-            }
-            await rpc("/mail/attachment/delete", rpcParams);
         }
         this.delete();
     }

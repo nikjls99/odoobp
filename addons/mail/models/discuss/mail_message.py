@@ -9,8 +9,8 @@ class MailMessage(models.Model):
 
     call_history_ids = fields.One2many("discuss.call.history", "start_call_message_id")
 
-    def _to_store_defaults(self):
-        return super()._to_store_defaults() + [
+    def _to_store_defaults(self, for_current_user=False):
+        return super()._to_store_defaults(for_current_user) + [
             Store.Many(
                 "call_history_ids",
                 ["duration_hour", "end_dt"],

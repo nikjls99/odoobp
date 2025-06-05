@@ -675,6 +675,16 @@ class IrAttachment(models.Model):
             tokens.append(access_token)
         return tokens
 
+    def _get_author_access_token(self):
+        """Returns a scoped limited access token that indicates ownership of the attachment.
+        If verified by verify_limited_field_access_token, accessing the attachment bypasses
+        the ACLs.
+
+        :rtype: str
+        """
+        self.ensure_one()
+        return limited_field_access_token(self, field_name="id", scope="attachment_author")
+
     def _get_raw_access_token(self):
         """Return a scoped access token for the `raw` field. The token can be
         used with `ir_binary._find_record` to bypass access rights.

@@ -6,7 +6,6 @@ from werkzeug.exceptions import NotFound
 
 from odoo import http
 from odoo.http import request
-from odoo.tools import frozendict
 from odoo.addons.mail.tools.discuss import add_guest_to_context, Store
 
 
@@ -58,7 +57,9 @@ class ThreadController(http.Controller):
             messages.set_message_done()
         return {
             **res,
-            "data": Store(messages, for_current_user=True).get_result(),
+            "data": Store()
+            .add(messages, messages._to_store_defaults(for_current_user=True))
+            .get_result(),
             "messages": messages.ids,
         }
 
@@ -168,9 +169,9 @@ class ThreadController(http.Controller):
     @add_guest_to_context
     def mail_message_post(self, thread_model, thread_id, post_data, context=None, **kwargs):
         guest = request.env["mail.guest"]._get_guest_from_context()
-        guest.env["ir.attachment"].browse(post_data.get("attachment_ids", []))._check_attachments_access(
-            kwargs.get("attachment_tokens")
-        )
+        guest.env["ir.attachment"].browse(
+            post_data.get("attachment_ids", [])
+        )._check_attachments_ownership(kwargs.get("attachment_tokens"))
         store = Store()
         request.update_context(message_post_store=store)
         if context:
@@ -202,13 +203,15 @@ class ThreadController(http.Controller):
             }
         # sudo: mail.thread - users can post on accessible threads
         message = thread.sudo().message_post(**self._prepare_post_data(post_data, thread, **kwargs))
-        return store.add(message, for_current_user=True).get_result()
+        return store.add(message, message._to_store_defaults(for_current_user=True)).get_result()
 
     @http.route("/mail/message/update_content", methods=["POST"], type="jsonrpc", auth="public")
     @add_guest_to_context
     def mail_message_update_content(self, message_id, body, attachment_ids, attachment_tokens=None, partner_ids=None, **kwargs):
         guest = request.env["mail.guest"]._get_guest_from_context()
-        guest.env["ir.attachment"].browse(attachment_ids)._check_attachments_access(attachment_tokens)
+        guest.env["ir.attachment"].browse(attachment_ids)._check_attachments_ownership(
+            attachment_tokens
+        )
         message = self._get_message_with_access(message_id, mode="create", **kwargs)
         if not message or not self._can_edit_message(message, **kwargs):
             raise NotFound()
@@ -238,10 +241,6 @@ class ThreadController(http.Controller):
     @classmethod
     def _can_edit_message(cls, message, **kwargs):
         return message.sudo().is_current_user_or_guest_author or request.env.user._is_admin()
-
-    @classmethod
-    def _can_delete_attachment(cls, message, **kwargs):
-        return cls._can_edit_message(message, **kwargs)
 
     @http.route("/mail/thread/unsubscribe", methods=["POST"], type="jsonrpc", auth="user")
     def mail_thread_unsubscribe(self, res_model, res_id, partner_ids):

@@ -4,14 +4,14 @@ import contextlib
 
 from odoo import _, models, SUPERUSER_ID
 from odoo.exceptions import AccessError, MissingError, UserError
-from odoo.tools import consteq
+from odoo.tools.misc import verify_limited_field_access_token
 from odoo.addons.mail.tools.discuss import Store
 
 
 class IrAttachment(models.Model):
     _inherit = 'ir.attachment'
 
-    def _check_attachments_access(self, attachment_tokens):
+    def _check_attachments_ownership(self, attachment_tokens):
         """This method relies on access rules/rights and therefore it should not be called from a sudo env."""
         self = self.sudo(False)
         attachment_tokens = attachment_tokens or ([None] * len(self))
@@ -25,10 +25,10 @@ class IrAttachment(models.Model):
                 try:
                     attachment.check('write')
                 except AccessError:
-                    if not access_token or not attachment_sudo.access_token or not consteq(attachment_sudo.access_token, access_token):
-                        message_sudo = self.env['mail.message'].sudo().search([('attachment_ids', 'in', attachment_sudo.ids)], limit=1)
-                        if not message_sudo or not message_sudo.is_current_user_or_guest_author:
-                            raise
+                    if not access_token or not verify_limited_field_access_token(
+                        attachment, "id", access_token, scope="attachment_author"
+                    ):
+                        raise
             except (AccessError, MissingError):
                 raise UserError(_("The attachment %s does not exist or you do not have the rights to access it.", attachment.id))
 
@@ -75,6 +75,11 @@ class IrAttachment(models.Model):
                 },
             )
         self.unlink()
+
+    def _field_store_repr(self, field_name):
+        if field_name == "as_author_access_token":
+            return [Store.Attr("as_author_access_token", lambda a: a._get_author_access_token())]
+        return [field_name]
 
     def _to_store_defaults(self):
         return [
