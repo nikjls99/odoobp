@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_move_form_inherit_l10n_sa_edi" model="ir.ui.view">
+            <field name="name">account.move.form.inherit.l10n_sa_edi</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="l10n_sa.view_move_form_inherit_l10n_sa"/>
+            <field name="arch" type="xml">
+                <field name="l10n_sa_reason" position="attributes">
+                    <attribute name="readonly" separator="or" add="edi_state =='sent' and l10n_sa_qr_code_str"></attribute>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>
