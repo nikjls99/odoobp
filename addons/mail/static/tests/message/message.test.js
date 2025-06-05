@@ -935,7 +935,7 @@ test("open author avatar card", async () => {
     await contains(".o-mail-Discuss-content .o-mail-Message-avatarContainer img");
     await click(".o-mail-Discuss-content .o-mail-Message-avatarContainer img");
     await contains(".o_avatar_card");
-    await contains(".o_card_user_infos > span", { text: "Demo" });
+    await contains(".o_card_user_name", { text: "Demo" });
     await contains(".o_card_user_infos > a", { text: "demo@example.com" });
     await contains(".o_card_user_infos > a", { text: "+5646548" });
 });
@@ -1381,9 +1381,12 @@ test("Can remove files of message individually", async () => {
     await contains(
         ":nth-child(1 of .o-mail-Message) :nth-child(2 of .o-mail-AttachmentContainer) [title='Remove']"
     );
-    await contains(":nth-child(2 of .o-mail-Message) .o-mail-AttachmentContainer [title='Remove']", {
-        count: 0,
-    });
+    await contains(
+        ":nth-child(2 of .o-mail-Message) .o-mail-AttachmentContainer [title='Remove']",
+        {
+            count: 0,
+        }
+    );
     await contains(":nth-child(3 of .o-mail-Message) .o-mail-AttachmentContainer [title='Remove']");
 });
 
@@ -1409,7 +1412,7 @@ test("avatar card from author should be opened after clicking on their avatar", 
     expect(".o-mail-Message-avatarContainer:first").toHaveClass("cursor-pointer");
     await click(".o-mail-Message-avatar");
     await contains(".o_avatar_card");
-    await contains(".o_card_user_infos > span", { text: "Partner_2" });
+    await contains(".o_card_user_name", { text: "Partner_2" });
     await contains(".o_card_user_infos > a", { text: "partner2@mail.com" });
     await contains(".o_card_user_infos > a", { text: "+15968415" });
 });
@@ -1435,7 +1438,7 @@ test("avatar card from author should be opened after clicking on their name", as
     await openFormView("res.partner", partnerId);
     await click(".o-mail-Message-author", { text: "Demo" });
     await contains(".o_avatar_card");
-    await contains(".o_card_user_infos > span", { text: "Demo" });
+    await contains(".o_card_user_name", { text: "Demo" });
     await contains(".o_card_user_infos > a", { text: "demo@example.com" });
     await contains(".o_card_user_infos > a", { text: "+5646548" });
 });

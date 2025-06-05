@@ -166,7 +166,11 @@ export class Message extends Record {
      * @returns {boolean}
      */
     get allowsEdition() {
-        return this.store.self.isAdmin || this.isSelfAuthored;
+        return (
+            this.store.self.isAdmin ||
+            this.isSelfAuthored ||
+            ["owner", "admin"].includes(this.thread?.selfMember?.channel_role)
+        );
     }
 
     get bubbleColor() {
