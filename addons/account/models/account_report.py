@@ -712,7 +712,7 @@ class AccountReportExpression(models.Model):
 
     def copy_data(self, default=None):
         vals_list = super().copy_data(default=default)
-        return [dict(vals, label=self.env._("%s (copy)", expression.label)) for expression, vals in zip(self, vals_list)]
+        return [dict(vals, label=expression.label) for expression, vals in zip(self, vals_list)]
 
     @api.ondelete(at_uninstall=False)
     def _unlink_archive_used_tags(self):
