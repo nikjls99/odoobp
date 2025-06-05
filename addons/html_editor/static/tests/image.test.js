@@ -5,6 +5,7 @@ import { contains } from "@web/../tests/web_test_helpers";
 import { setupEditor } from "./_helpers/editor";
 import { getContent, setContent } from "./_helpers/selection";
 import { undo } from "./_helpers/user_actions";
+import { expectToolbarOpened } from "./_helpers/toolbar";
 
 const base64Img =
     "data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAUA\n        AAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO\n            9TXL0Y4OHwAAAABJRU5ErkJggg==";
@@ -356,11 +357,10 @@ test("Image transformation scalers position", async () => {
         }
     };
     click("img.test-image");
-    await waitFor(".o-we-toolbar");
-    expect(".o-we-toolbar").toHaveCount(1);
+    await expectToolbarOpened();
     click(".o-we-toolbar div[name='image_transform'] button");
     await animationFrame();
-    expect(".o-we-toolbar").toHaveCount(1);
+    await expectToolbarOpened();
     expect(".transfo-container").toHaveCount(1);
     checkScalersPositions(queryOne("img"));
     // resize by 25% update the position of the scalers
