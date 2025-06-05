@@ -33,7 +33,7 @@ class TestAlarm(TestsCommon):
         self.alert_ny.mode = 'chat'
         self.assertTrue(cron_ny.active)
 
-        ctx_today = fields.Date.context_today(self.alert_ny, self.fakenow)
+        ctx_today = fields.Date.context_today(self.alert_ny, datetime.now())
         self.alert_ny.until = ctx_today - timedelta(days=1)
         self.assertFalse(cron_ny.active)
         self.alert_ny.until = ctx_today + timedelta(days=2)

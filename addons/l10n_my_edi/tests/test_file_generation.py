@@ -21,6 +21,7 @@ NS_MAP = {
 }
 
 
+@freeze_time(datetime(2024, 7, 15, 10))
 @tagged('post_install_l10n', 'post_install', '-at_install')
 class L10nMyEDITestFileGeneration(AccountTestInvoicingCommon):
 
@@ -75,9 +76,6 @@ class L10nMyEDITestFileGeneration(AccountTestInvoicingCommon):
             'type_tax_use': 'purchase',
             'country_id': cls.env.ref('base.my').id,
         })
-
-        cls.fakenow = datetime(2024, 7, 15, 10, 00, 00)
-        cls.startClassPatcher(freeze_time(cls.fakenow))
 
     def test_01_can_generate_file(self):
         """

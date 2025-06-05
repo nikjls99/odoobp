@@ -75,7 +75,7 @@ class TestIrCron(TransactionCase, CronMixinCase):
     def setUpClass(cls):
         super().setUpClass()
 
-        freezer = freeze_time(cls.cr.now())
+        freezer = freeze_time(cls.cr.now()).freezer
         cls.frozen_datetime = freezer.start()
         cls.addClassCleanup(freezer.stop)
 

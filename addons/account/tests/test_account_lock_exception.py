@@ -1,6 +1,6 @@
 from contextlib import closing
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from freezegun import freeze_time
 
@@ -11,15 +11,13 @@ from odoo.exceptions import UserError
 from odoo.tests import new_test_user, tagged
 
 
+@freeze_time(datetime.date(datetime.now()))
 @tagged('post_install', '-at_install')
 class TestAccountLockException(AccountTestInvoicingCommon):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-
-        cls.fakenow = cls.env.cr.now()
-        cls.startClassPatcher(freeze_time(cls.fakenow))
 
         cls.other_user = new_test_user(
             cls.env,
@@ -58,7 +56,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company.id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_user_exception_move_edit_multi_user',
                 })
                 move.button_draft()
@@ -86,7 +84,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company.id,
                     'user_id': False,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_global_exception_move_edit_multi_user',
                 })
 
@@ -137,7 +135,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': branch.id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_user_exception_branch branch exception',
                 })
                 branch_move.button_draft()
@@ -156,7 +154,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': root_company.id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_user_exception_branch root_company exception',
                 })
                 for move in [branch_move, root_move]:
@@ -181,7 +179,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company_data_2['company'].id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_user_exception_move_edit_multi_user',
                 })
 
@@ -208,7 +206,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company.id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2016-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_user_exception_move_edit_multi_user',
                 })
 
@@ -235,8 +233,8 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company.id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'create_date': self.fakenow - timedelta(hours=24),
-                    'end_datetime': self.fakenow - timedelta(milliseconds=1),
+                    'create_date': datetime.now() - timedelta(hours=24),
+                    'end_datetime': datetime.now() - timedelta(milliseconds=1),
                     'reason': 'test_expired_exception',
                 })
                 with self.assertRaises(UserError):
@@ -258,7 +256,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company.id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_user_exception_move_edit_multi_user',
                 })
                 move.button_draft()
@@ -290,7 +288,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company_data_2['company'].id,
                     'user_id': self.env.user.id,
                     exception_lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_user_exception_wrong_field',
                 })
 
@@ -324,7 +322,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
             'company_id': self.company_data_2['company'].id,
             'user_id': self.env.user.id,
             lock_date_field: fields.Date.to_date('2010-01-01'),
-            'end_datetime': self.fakenow + timedelta(hours=24),
+            'end_datetime': datetime.now() + timedelta(hours=24),
             'reason': f'test_hard_lock_ignores_exceptions {lock_date_field}',
             }
             for lock_date_field in SOFT_LOCK_DATE_FIELDS
@@ -351,7 +349,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company.id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_exception_recreated_on_lock_date_change revoked',
                 })
                 revoked_exception.action_revoke()
@@ -359,7 +357,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company.id,
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_exception_recreated_on_lock_date_change active',
                 })
 
@@ -383,7 +381,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'user_id': self.env.user.id,
                     lock_date_field: fields.Date.to_date('2010-01-01'),
                     'company_lock_date': fields.Date.to_date('2021-01-01'),
-                    'end_datetime': self.env.cr.now() + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_exception_recreated_on_lock_date_change active',
                 }])
 
@@ -406,7 +404,7 @@ class TestAccountLockException(AccountTestInvoicingCommon):
                     'company_id': self.company.id,
                     'user_id': self.env.user.id,
                     lock_date_field: False,
-                    'end_datetime': self.fakenow + timedelta(hours=24),
+                    'end_datetime': datetime.now() + timedelta(hours=24),
                     'reason': 'test_user_exception_move_edit_multi_user',
                 })
                 move.button_draft()

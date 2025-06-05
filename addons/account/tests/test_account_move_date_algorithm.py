@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from contextlib import closing
 
-import freezegun
+from freezegun import freeze_time
 
 from odoo import fields, Command
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
@@ -66,7 +66,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
     # TESTS
     # -------------------------------------------------------------------------
 
-    @freezegun.freeze_time('2017-01-12')
+    @freeze_time('2017-01-12')
     def test_out_invoice_date_with_lock_date(self):
         self._set_lock_date('2016-12-31')
         move = self._create_invoice('out_invoice', '2016-01-01')
@@ -77,7 +77,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
             'date': fields.Date.from_string('2017-01-12'),
         }])
 
-    @freezegun.freeze_time('2017-01-12')
+    @freeze_time('2017-01-12')
     def test_out_invoice_reverse_date_with_lock_date(self):
         move = self._create_invoice('out_invoice', '2016-01-01')
         move.action_post()
@@ -89,7 +89,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
             'date': fields.Date.from_string('2017-01-12'),
         }])
 
-    @freezegun.freeze_time('2017-01-12')
+    @freeze_time('2017-01-12')
     def test_out_refund_date_with_lock_date(self):
         self._set_lock_date('2016-12-31')
         move = self._create_invoice('out_refund', '2016-01-01')
@@ -100,7 +100,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
             'date': fields.Date.from_string('2017-01-12'),
         }])
 
-    @freezegun.freeze_time('2017-01-12')
+    @freeze_time('2017-01-12')
     def test_out_refund_reverse_date_with_lock_date(self):
         move = self._create_invoice('out_refund', '2016-01-01')
         move.action_post()
@@ -109,7 +109,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
 
         self.assertRecordValues(reverse_move, [{'date': fields.Date.from_string('2017-01-12')}])
 
-    @freezegun.freeze_time('2017-01-12')
+    @freeze_time('2017-01-12')
     def test_in_invoice_date_with_lock_date(self):
         self._set_lock_date('2016-12-31')
         move = self._create_invoice('in_invoice', '2016-01-01')
@@ -120,7 +120,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
             'date': fields.Date.from_string('2017-01-12'),
         }])
 
-    @freezegun.freeze_time('2017-01-12')
+    @freeze_time('2017-01-12')
     def test_in_invoice_reverse_date_with_lock_date(self):
         move = self._create_invoice('in_invoice', '2016-01-01')
         move.action_post()
@@ -132,7 +132,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
             'date': fields.Date.from_string('2017-01-12'),
         }])
 
-    @freezegun.freeze_time('2017-01-12')
+    @freeze_time('2017-01-12')
     def test_in_refund_date_with_lock_date(self):
         self._set_lock_date('2016-12-31')
         move = self._create_invoice('in_refund', '2016-01-01')
@@ -143,7 +143,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
             'date': fields.Date.from_string('2017-01-12'),
         }])
 
-    @freezegun.freeze_time('2017-01-12')
+    @freeze_time('2017-01-12')
     def test_in_refund_reverse_date_with_lock_date(self):
         move = self._create_invoice('in_refund', '2016-01-01')
         move.action_post()
@@ -152,7 +152,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
 
         self.assertRecordValues(reverse_move, [{'date': fields.Date.from_string('2017-01-12')}])
 
-    @freezegun.freeze_time('2017-02-12')
+    @freeze_time('2017-02-12')
     def test_reconcile_with_lock_date(self):
         invoice = self._create_invoice('out_invoice', '2016-01-01', currency_id=self.other_currency.id)
         refund = self._create_invoice('out_refund', '2017-01-01', currency_id=self.other_currency.id)
@@ -168,7 +168,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
             'amount_total_signed': 200.0,
         }])
 
-    @freezegun.freeze_time('2017-02-12')
+    @freeze_time('2017-02-12')
     def test_unreconcile_with_lock_date(self):
         invoice = self._create_invoice('out_invoice', '2016-01-01', currency_id=self.other_currency.id)
         refund = self._create_invoice('out_refund', '2017-01-01', currency_id=self.other_currency.id)
@@ -215,7 +215,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
 
         self._set_lock_date('2017-01-03')
 
-        with freezegun.freeze_time('2017-01-12'):
+        with freeze_time('2017-01-12'):
             (invoice + payment.move_id).line_ids\
                 .filtered(lambda x: x.account_id.account_type == 'asset_receivable')\
                 .reconcile()
@@ -229,7 +229,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
 
         self._set_lock_date('2017-02-01')
 
-        with freezegun.freeze_time('2017-03-12'):
+        with freeze_time('2017-03-12'):
             (invoice + payment.move_id).line_ids.remove_move_reconcile()
 
         reverse_exchange_move = self.env['account.move'].search([('tax_cash_basis_origin_move_id', '=', invoice.id)]) - caba_move
@@ -239,7 +239,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
             'amount_total_signed': 440.0,
         }])
 
-    @freezegun.freeze_time('2023-05-01')
+    @freeze_time('2023-05-01')
     def test_caba_with_different_lock_dates(self):
         """
         Test the date of the CABA move when reconciling a payment in case the lock dates
@@ -294,7 +294,7 @@ class TestAccountMoveDateAlgorithm(AccountTestInvoicingCommon):
                 self.assertEqual(caba_move.journal_id.type, 'general')
                 self.assertEqual(caba_move.date.isoformat(), '2023-02-28')
 
-    @freezegun.freeze_time('2024-08-05')
+    @freeze_time('2024-08-05')
     def test_lock_date_exceptions(self):
         for lock_date_field, move_type in [
             ('fiscalyear_lock_date', 'out_invoice'),

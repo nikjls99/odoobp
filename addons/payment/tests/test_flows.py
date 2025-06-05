@@ -155,7 +155,7 @@ class TestFlows(PaymentHttpCommon):
     # freeze time for consistent singularize_prefix behavior during the test
     @freeze_time("2011-11-02 12:00:21")
     def _test_validation(self, flow):
-        # Fixed with freezegun
+        # Fixed with freeze_time
         expected_reference = 'V-20111102120021'
 
         validation_amount = self.provider._get_validation_amount()
