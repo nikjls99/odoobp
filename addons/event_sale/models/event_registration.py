@@ -85,6 +85,13 @@ class EventRegistration(models.Model):
                 )
                 vals.update(so_line_vals)
         registrations = super(EventRegistration, self).create(vals_list)
+
+        # Not working as expected (mails will be sent from super call)
+        if self.env.user.login == 'public' and any('email' not in question.question_type for question in registrations.event_id.question_ids):
+            parent_registration = registrations[0]
+            registrations.write({'parent_id': parent_registration.id})
+            parent_registration._update_mail_schedulers()
+
         for registration in registrations:
             if registration.sale_order_id:
                 registration.message_post_with_source(

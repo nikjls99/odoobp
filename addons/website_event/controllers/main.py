@@ -413,7 +413,7 @@ class WebsiteEventController(http.Controller):
 
             # update registration based on visitor
             registration_values['visitor_id'] = visitor_sudo.id
-
+            registration_values['name'] = registration_values.get('name') or ''
             registrations_to_create.append(registration_values)
 
         return request.env['event.registration'].sudo().create(registrations_to_create)
