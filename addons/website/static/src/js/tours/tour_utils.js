@@ -246,6 +246,9 @@ export function clickOnEditAndWaitEditMode(position = "bottom") {
     }, {
         content: "Check that we are in edit mode",
         trigger: ".o_website_preview :iframe .odoo-editor-editable",
+    }, {
+        content: "Check that builder sidebar is opened",
+        trigger: ".o_builder_sidebar_open",
     }];
 }
 
