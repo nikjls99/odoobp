@@ -10,20 +10,21 @@ import {
     setContent,
     setSelection,
 } from "./_helpers/selection";
+import { expectToolbarClosed, expectToolbarOpened } from "./_helpers/toolbar";
 
 describe("Wysiwyg Component", () => {
     test("Wysiwyg component can be instantiated", async () => {
         const { el } = await setupWysiwyg();
         expect(".o-wysiwyg").toHaveCount(1);
         expect(".odoo-editor-editable").toHaveCount(1);
-        expect(".o-we-toolbar").toHaveCount(0);
+        await expectToolbarClosed();
 
         // set the selection to a range, and check that the toolbar
         // is opened
         expect(getContent(el)).toBe("");
         setContent(el, "hello [hoot]");
         await animationFrame();
-        expect(".o-we-toolbar").toHaveCount(1);
+        await expectToolbarOpened();
     });
 
     test("Wysiwyg component can be instantiated with initial content", async () => {
@@ -34,19 +35,19 @@ describe("Wysiwyg Component", () => {
     });
 
     test("Wysiwyg component can be instantiated with a permanent toolbar", async () => {
-        expect(".o-we-toolbar").toHaveCount(0);
+        await expectToolbarClosed();
         await setupWysiwyg({ toolbar: true });
         expect(".o-wysiwyg").toHaveCount(1);
         expect(".odoo-editor-editable").toHaveCount(1);
-        expect(".o-we-toolbar").toHaveCount(1);
+        await expectToolbarOpened();
     });
 
     test("Wysiwyg component can't display a permanent toolbar if toolbar plugin is missing", async () => {
-        expect(".o-we-toolbar").toHaveCount(0);
+        await expectToolbarClosed();
         await setupWysiwyg({ toolbar: true, config: { Plugins: CORE_PLUGINS } });
         expect(".o-wysiwyg").toHaveCount(1);
         expect(".odoo-editor-editable").toHaveCount(1);
-        expect(".o-we-toolbar").toHaveCount(0);
+        await expectToolbarClosed();
     });
 
     test("wysiwyg with toolbar: buttons react to selection change", async () => {
