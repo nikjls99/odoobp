@@ -6,15 +6,23 @@ import {
     complexCondition,
     condition,
     connector,
-    domainFromExpression,
     domainFromTree,
     expression,
-    expressionFromDomain,
     expressionFromTree,
     treeFromDomain,
     treeFromExpression,
 } from "@web/core/tree_editor/condition_tree";
 import { makeMockEnv } from "@web/../tests/web_test_helpers";
+
+function expressionFromDomain(domain, options = {}) {
+    const tree = treeFromDomain(domain, options);
+    return expressionFromTree(tree, options);
+}
+
+function domainFromExpression(expression, options = {}) {
+    const tree = treeFromExpression(expression, options);
+    return domainFromTree(tree);
+}
 
 describe.current.tags("headless");
 
@@ -117,14 +125,19 @@ test("domainFromTree", async () => {
             tree: condition("date.__time", "between", ["01:15:24", "22:06:56"]),
             result: `[
                 "&",
-                    "|", "|",
-                            ("date.hour_number", ">=", 1),
-                            "&", ("date.hour_number", "=", 1), ("date.minute_number", ">=", 15),
-                            "&", "&", ("date.hour_number", "=", 1), ("date.minute_number", "=", 15), ("date.second_number", ">=", 24),
-                    "|", "|",
-                            ("date.hour_number", "<=", 22),
-                            "&", ("date.hour_number", "=", 22), ("date.minute_number", "<=", 6),
-                            "&", "&", ("date.hour_number", "=", 22), ("date.minute_number", "=", 6), ("date.second_number", "<=", 56)]`,
+                    "|",
+                        "|","|",
+                            ("date.hour_number",">",1),
+                            "&",("date.hour_number","=",1),("date.minute_number",">",15),
+                            "&","&",("date.hour_number","=",1),("date.minute_number","=",15),("date.second_number",">",24),
+                        "&","&",("date.hour_number","=",1),("date.minute_number","=",15),("date.second_number","=",24),
+                    "|",
+                        "|","|",
+                            ("date.hour_number","<",22),
+                            "&",("date.hour_number","=",22),("date.minute_number","<",6),
+                            "&","&",("date.hour_number","=",22),("date.minute_number","=",6),("date.second_number","<",56),
+                        "&","&",("date.hour_number","=",22),("date.minute_number","=",6),("date.second_number","=",56)
+            ]`,
         },
     ];
     for (const { tree, result } of toTest) {
@@ -188,9 +201,265 @@ test("domainFromTree . treeFromDomain", async () => {
         {
             domain: `["&", "&", "&", "&", "&", ("date.hour_number", ">=", 1), ("date.minute_number", ">=", 15), ("date.second_number", ">=", 24), ("date.hour_number", "<=", 22), ("date.minute_number", "<=", 6), ("date.second_number", "<=", 56)]`,
         },
+        {
+            domain: `["&", "&", ("m2o.date.hour_number", "=", 1), ("m2o.date.minute_number", "=", 15), ("m2o.date.second_number", "=", 24)]`,
+        },
     ];
     for (const { domain, result } of toTest) {
         expect(domainFromTree(treeFromDomain(domain))).toBe(result || domain);
+    }
+});
+
+test("datetime options: =", async () => {
+    await makeMockEnv();
+    const options = {
+        getFieldDef: (name) => {
+            if (name === "m2o") {
+                return { type: "many2one" };
+            }
+            if (name === "m2o.datetime") {
+                return { type: "datetime" };
+            }
+            if (name === "datetime") {
+                return { type: "datetime" };
+            }
+            return null;
+        },
+    };
+    const toTest = [
+        {
+            domain: `["&", "&", ("datetime.hour_number", "=", 1), ("datetime.minute_number", "=", 15), ("datetime.second_number", "=", 24)]`,
+            result: condition("datetime.__time", "=", "01:15:24"),
+        },
+        {
+            domain: `["&", "&", ("m2o.datetime.hour_number", "=", 1), ("m2o.datetime.minute_number", "=", 15), ("m2o.datetime.second_number", "=", 24)]`,
+            result: connector("&", [
+                condition("m2o.datetime.hour_number", "=", 1),
+                condition("m2o.datetime.minute_number", "=", 15),
+                condition("m2o.datetime.second_number", "=", 24),
+            ]),
+        },
+        {
+            domain: `[("m2o", "any", ["&", "&", ("datetime.hour_number", "=", 1), ("datetime.minute_number", "=", 15), ("datetime.second_number", "=", 24)])]`,
+            result: condition("m2o.datetime.__time", "=", "01:15:24"),
+        },
+        {
+            domain: `["!", ("m2o", "any", ["&", "&", ("datetime.hour_number", "=", 1), ("datetime.minute_number", "=", 15), ("datetime.second_number", "=", 24)])]`,
+            result: condition("m2o", "any", condition("datetime.__time", "=", "01:15:24"), true),
+        },
+        {
+            domain: `["&", "&", ("datetime.year_number", "=", 2025), ("datetime.month_number", "=", 6), ("datetime.day_of_month", "=", 4)]`,
+            result: condition("datetime.__date", "=", "2025-06-04"),
+        },
+        {
+            domain: `["&", "&", ("m2o.datetime.year_number", "=", 2025), ("m2o.datetime.month_number", "=", 6), ("m2o.datetime.day_of_month", "=", 4)]`,
+            result: connector("&", [
+                condition("m2o.datetime.year_number", "=", 2025),
+                condition("m2o.datetime.month_number", "=", 6),
+                condition("m2o.datetime.day_of_month", "=", 4),
+            ]),
+        },
+        {
+            domain: `[("m2o", "any", ["&", "&", ("datetime.year_number", "=", 2025), ("datetime.month_number", "=", 6), ("datetime.day_of_month", "=", 4)])]`,
+            result: condition("m2o.datetime.__date", "=", "2025-06-04"),
+        },
+        {
+            domain: `["!", ("m2o", "any", ["&", "&", ("datetime.year_number", "=", 2025), ("datetime.month_number", "=", 6), ("datetime.day_of_month", "=", 4)])]`,
+            result: condition("m2o", "any", condition("datetime.__date", "=", "2025-06-04"), true),
+        },
+    ];
+    for (const { domain, result } of toTest) {
+        expect(treeFromDomain(domain, options)).toEqual(result);
+    }
+});
+
+test("datetime options: !=", async () => {
+    await makeMockEnv();
+    const options = {
+        getFieldDef: (name) => {
+            if (name === "m2o") {
+                return { type: "many2one" };
+            }
+            if (name === "m2o.datetime") {
+                return { type: "datetime" };
+            }
+            if (name === "datetime") {
+                return { type: "datetime" };
+            }
+            return null;
+        },
+    };
+    const toTest = [
+        {
+            domain: `["|", "|", ("datetime.hour_number", "!=", 1), ("datetime.minute_number", "!=", 15), ("datetime.second_number", "!=", 24)]`,
+            result: condition("datetime.__time", "!=", "01:15:24"),
+        },
+        {
+            domain: `["|", "|", ("m2o.datetime.hour_number", "!=", 1), ("m2o.datetime.minute_number", "!=", 15), ("m2o.datetime.second_number", "!=", 24)]`,
+            result: connector("|", [
+                condition("m2o.datetime.hour_number", "!=", 1),
+                condition("m2o.datetime.minute_number", "!=", 15),
+                condition("m2o.datetime.second_number", "!=", 24),
+            ]),
+        },
+        {
+            domain: `[("m2o", "any", ["|", "|", ("datetime.hour_number", "!=", 1), ("datetime.minute_number", "!=", 15), ("datetime.second_number", "!=", 24)])]`,
+            result: condition("m2o.datetime.__time", "!=", "01:15:24"),
+        },
+        {
+            domain: `["!", ("m2o", "any", ["|", "|", ("datetime.hour_number", "!=", 1), ("datetime.minute_number", "!=", 15), ("datetime.second_number", "!=", 24)])]`,
+            result: condition("m2o", "any", condition("datetime.__time", "!=", "01:15:24"), true),
+        },
+        {
+            domain: `["|", "|", ("datetime.year_number", "!=", 2025), ("datetime.month_number", "!=", 6), ("datetime.day_of_month", "!=", 4)]`,
+            result: condition("datetime.__date", "!=", "2025-06-04"),
+        },
+        {
+            domain: `["|", "|", ("m2o.datetime.year_number", "!=", 2025), ("m2o.datetime.month_number", "!=", 6), ("m2o.datetime.day_of_month", "!=", 4)]`,
+            result: connector("|", [
+                condition("m2o.datetime.year_number", "!=", 2025),
+                condition("m2o.datetime.month_number", "!=", 6),
+                condition("m2o.datetime.day_of_month", "!=", 4),
+            ]),
+        },
+        {
+            domain: `[("m2o", "any", ["|", "|", ("datetime.year_number", "!=", 2025), ("datetime.month_number", "!=", 6), ("datetime.day_of_month", "!=", 4)])]`,
+            result: condition("m2o.datetime.__date", "!=", "2025-06-04"),
+        },
+        {
+            domain: `["!", ("m2o", "any", ["|", "|", ("datetime.year_number", "!=", 2025), ("datetime.month_number", "!=", 6), ("datetime.day_of_month", "!=", 4)])]`,
+            result: condition("m2o", "any", condition("datetime.__date", "!=", "2025-06-04"), true),
+        },
+    ];
+    for (const { domain, result } of toTest) {
+        expect(treeFromDomain(domain, options)).toEqual(result);
+    }
+});
+
+test("datetime options: >", async () => {
+    await makeMockEnv();
+    const options = {
+        getFieldDef: (name) => {
+            if (name === "m2o") {
+                return { type: "many2one" };
+            }
+            if (name === "m2o.datetime") {
+                return { type: "datetime" };
+            }
+            if (name === "datetime") {
+                return { type: "datetime" };
+            }
+            return null;
+        },
+    };
+    const toTest = [
+        {
+            domain: `[
+                "|","|",
+                    ("datetime.hour_number",">",1),
+                    "&",("datetime.hour_number","=",1),("datetime.minute_number",">",15),
+                    "&","&",("datetime.hour_number","=",1),("datetime.minute_number","=",15),("datetime.second_number",">",24)
+            ]`,
+            result: condition("datetime.__time", ">", "01:15:24"),
+        },
+        {
+            domain: `[
+                "|","|",
+                    ("m2o.datetime.hour_number",">",1),
+                    "&",("m2o.datetime.hour_number","=",1),("m2o.datetime.minute_number",">",15),
+                    "&","&",("m2o.datetime.hour_number","=",1),("m2o.datetime.minute_number","=",15),("m2o.datetime.second_number",">",24)
+            ]`,
+            result: connector("|", [
+                condition("m2o.datetime.hour_number", ">", 1),
+                connector("&", [
+                    condition("m2o.datetime.hour_number", "=", 1),
+                    condition("m2o.datetime.minute_number", ">", 15),
+                ]),
+                connector("&", [
+                    condition("m2o.datetime.hour_number", "=", 1),
+                    condition("m2o.datetime.minute_number", "=", 15),
+                    condition("m2o.datetime.second_number", ">", 24),
+                ]),
+            ]),
+        },
+        {
+            domain: `[
+                ("m2o", "any", [
+                    "|","|",
+                        ("datetime.hour_number",">",1),
+                        "&",("datetime.hour_number","=",1),("datetime.minute_number",">",15),
+                        "&","&",("datetime.hour_number","=",1),("datetime.minute_number","=",15),("datetime.second_number",">",24)
+                ])
+            ]`,
+            result: condition("m2o.datetime.__time", ">", "01:15:24"),
+        },
+        {
+            domain: `[
+                "!",
+                ("m2o", "any", [
+                    "|","|",
+                        ("datetime.hour_number",">",1),
+                        "&",("datetime.hour_number","=",1),("datetime.minute_number",">",15),
+                        "&","&",("datetime.hour_number","=",1),("datetime.minute_number","=",15),("datetime.second_number",">",24)
+                ])
+            ]`,
+            result: condition("m2o", "any", condition("datetime.__time", ">", "01:15:24"), true),
+        },
+        {
+            domain: `[
+                "|","|",
+                    ("datetime.year_number",">",2025),
+                    "&",("datetime.year_number","=",2025),("datetime.month_number",">",6),
+                    "&","&",("datetime.year_number","=",2025),("datetime.month_number","=",6),("datetime.day_of_month",">",4)
+            ]`,
+            result: condition("datetime.__date", ">", "2025-06-04"),
+        },
+        {
+            domain: `[
+                "|","|",
+                    ("m2o.datetime.year_number",">",2025),
+                    "&",("m2o.datetime.year_number","=",2025),("m2o.datetime.month_number",">",6),
+                    "&","&",("m2o.datetime.year_number","=",2025),("m2o.datetime.month_number","=",6),("m2o.datetime.day_of_month",">",4)
+            ]`,
+            result: connector("|", [
+                condition("m2o.datetime.year_number", ">", 2025),
+                connector("&", [
+                    condition("m2o.datetime.year_number", "=", 2025),
+                    condition("m2o.datetime.month_number", ">", 6),
+                ]),
+                connector("&", [
+                    condition("m2o.datetime.year_number", "=", 2025),
+                    condition("m2o.datetime.month_number", "=", 6),
+                    condition("m2o.datetime.day_of_month", ">", 4),
+                ]),
+            ]),
+        },
+        {
+            domain: `[
+                ("m2o", "any", [
+                    "|","|",
+                        ("datetime.year_number",">",2025),
+                        "&",("datetime.year_number","=",2025),("datetime.month_number",">",6),
+                        "&","&",("datetime.year_number","=",2025),("datetime.month_number","=",6),("datetime.day_of_month",">",4)
+                ])
+            ]`,
+            result: condition("m2o.datetime.__date", ">", "2025-06-04"),
+        },
+        {
+            domain: `[
+                "!",
+                ("m2o", "any", [
+                    "|","|",
+                        ("datetime.year_number",">",2025),
+                        "&",("datetime.year_number","=",2025),("datetime.month_number",">",6),
+                        "&","&",("datetime.year_number","=",2025),("datetime.month_number","=",6),("datetime.day_of_month",">",4)
+                ])
+            ]`,
+            result: condition("m2o", "any", condition("datetime.__date", ">", "2025-06-04"), true),
+        },
+    ];
+    for (const { domain, result } of toTest) {
+        expect(treeFromDomain(domain, options)).toEqual(result);
     }
 });
 

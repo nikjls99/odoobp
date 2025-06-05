@@ -2120,6 +2120,20 @@ test(`any/not any operator in editable mode`, async () => {
     );
 });
 
+test(`any/not any operator in editable mode (add a rule in empty sub domain)`, async () => {
+    await makeDomainSelector({
+        readonly: false,
+        isDebugMode: true,
+        domain: `[("product_id", "any", [])]`,
+    });
+    await addNewRule();
+    expect(getCurrentPath()).toBe("Product");
+    expect(getCurrentOperator()).toBe("matches");
+    expect(getCurrentPath(1)).toBe("Id");
+    expect(getCurrentOperator(1)).toBe("equals");
+    expect(SELECTORS.debugArea).toHaveValue(`[("product_id", "any", [("id", "=", 1)])]`);
+});
+
 test(`any/not any operator (readonly) with custom domain as value`, async () => {
     const toTest = [
         {
