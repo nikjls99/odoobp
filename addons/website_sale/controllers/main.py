@@ -228,6 +228,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
             'displayDetail': True,
             'displayExtraDetail': True,
             'displayExtraLink': True,
+            'displayExtraInfo': True,
             'displayImage': True,
             'allowFuzzy': not post.get('noFuzzy'),
             'category': str(category.id) if category else None,

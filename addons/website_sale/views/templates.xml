@@ -54,7 +54,7 @@
     </template>
 
     <template id="product_category_extra_link" name="Product Category Extra Link">
-        <button  class="btn btn-link btn-sm pe-0" disabled="disabled">
+        <button  class="btn btn-link btn-sm p-0" disabled="disabled">
             <t t-if="len(categories) == 1">Category:</t>
             <t t-else="">Categories:</t>
         </button>

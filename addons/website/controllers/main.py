@@ -468,6 +468,37 @@ class Website(Home):
         order = order or 'name ASC'
         return 'is_published desc, %s, id desc' % order
 
+    def dynamic_shorten(self, text, max_length, term, context_words=4):
+        """
+        Shortens text to ensure the matched term appears after a few context words.
+        Adds ellipsis if truncation occurs.
+        """
+        if len(text) <= max_length:
+            return text
+
+        match = re.search(re.escape(term), text, re.IGNORECASE)
+        if not match:
+            return shorten(text, max_length, placeholder='...')
+
+        match_start = match.start()
+        words_before = text[:match_start].split()
+        start_word_index = max(0, len(words_before) - context_words)
+
+        # Reconstruct starting position by joining words up to the target index
+        start_pos = len(" ".join(words_before[:start_word_index]))
+        if start_pos > 0:
+            start_pos += 1
+
+        end_pos = min(len(text), start_pos + max_length)
+        snippet = text[start_pos:end_pos]
+
+        if start_pos > 0:
+            snippet = '...' + snippet
+        if end_pos < len(text):
+            snippet += '...'
+
+        return snippet
+
     @http.route('/website/snippet/autocomplete', type='jsonrpc', auth='public', website=True, readonly=True)
     def autocomplete(self, search_type=None, term=None, order=None, limit=5, max_nb_chars=999, options=None):
         """
@@ -518,6 +549,13 @@ class Website(Home):
             mapped = {
                 '_fa': record.get('_fa'),
             }
+            rating_ids = record.get('rating_ids', [])
+            feedback_texts = []
+            if rating_ids:
+                feedbacks = request.env['rating.rating'].search_read(
+                    [('id', 'in', rating_ids)], ['feedback']
+                )
+                feedback_texts = [fb['feedback'] for fb in feedbacks if fb.get('feedback')]
             for mapped_name, field_meta in mapping.items():
                 value = record.get(field_meta.get('name'))
                 if not value:
@@ -525,8 +563,10 @@ class Website(Home):
                     continue
                 field_type = field_meta.get('type')
                 if field_type == 'text':
+                    if isinstance(value, list):
+                        value = ', '.join(map(str, value))
                     if value and field_meta.get('truncate', True):
-                        value = shorten(value, max_nb_chars, placeholder='...')
+                        value = self.dynamic_shorten(value, max_nb_chars, term)
                     if field_meta.get('match') and value and term:
                         pattern = '|'.join(map(re.escape, term.split()))
                         if pattern:
@@ -537,6 +577,23 @@ class Website(Home):
                                     {'parts': parts}
                                 )
                                 field_type = 'html'
+                if field_meta.get('name') == 'rating_ids' and feedback_texts:
+                    pattern = '|'.join(map(re.escape, term.split())) if term else ''
+                    highlighted_feedbacks = []
+
+                    for feedback in feedback_texts:
+                        parts = re.split(f'({pattern})', feedback, flags=re.IGNORECASE) if pattern else []
+                        if parts and len(parts) > 1:
+                            highlighted_feedbacks.append(
+                                request.env['ir.ui.view'].sudo()._render_template(
+                                    "website.search_text_with_highlight",
+                                    {'parts': parts}
+                                )
+                            )
+                            field_type = 'html'
+                        else:
+                            highlighted_feedbacks.append(feedback)
+                    value = ', '.join(highlighted_feedbacks)
 
                 if field_type not in ('image', 'binary') and ('ir.qweb.field.%s' % field_type) in request.env:
                     opt = {}
@@ -545,7 +602,6 @@ class Website(Home):
                     value = request.env[('ir.qweb.field.%s' % field_type)].value_to_html(value, opt)
                 mapped[mapped_name] = escape(value)
             result.append(mapped)
-
         return {
             'results': result,
             'results_count': results_count,
@@ -560,6 +616,7 @@ class Website(Home):
             'displayExtraDetail': False,
             'displayExtraLink': False,
             'displayImage': False,
+            'displayExtraInfo': False,
             'allowFuzzy': not post.get('noFuzzy'),
         }
 
@@ -598,6 +655,7 @@ class Website(Home):
             'displayExtraDetail': True,
             'displayExtraLink': True,
             'displayImage': True,
+            'displayExtraInfo': True,
             'allowFuzzy': not post.get('noFuzzy'),
         }
 

@@ -30,6 +30,7 @@ export class SearchBar extends Interaction {
         this.inputEl = this.el.querySelector(".search-query");
         this.menuEl = null;
         this.searchType = this.inputEl.dataset.searchType;
+        this.template = this.inputEl.dataset.searchTemplate || "website.s_searchbar.autocomplete";
         const orderByEl = this.el.querySelector(".o_search_order_by");
         const form = orderByEl.closest("form");
         this.order = orderByEl.value;
@@ -44,6 +45,7 @@ export class SearchBar extends Interaction {
             "displayImage": dataset.displayImage,
             "displayDescription": dataset.displayDescription,
             "displayExtraLink": dataset.displayExtraLink,
+            "displayExtraInfo": dataset.displayExtraInfo,
             "displayDetail": dataset.displayDetail,
             // Make it easy for customization to disable fuzzy matching on specific searchboxes
             "allowFuzzy": !dataset.noFuzzy,
@@ -116,7 +118,7 @@ export class SearchBar extends Interaction {
         const prevMenuEl = this.menuEl;
         if (res && this.limit) {
             const results = res["results"];
-            let template = "website.s_searchbar.autocomplete";
+            let template = this.template;
             const candidate = template + "." + this.searchType;
             if (getTemplate(candidate)) {
                 template = candidate;
@@ -142,6 +144,7 @@ export class SearchBar extends Interaction {
             "detail_strike",
             "extra_link",
             "name",
+            "display_extra_info"
         ];
     }
 

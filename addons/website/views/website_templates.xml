@@ -2729,7 +2729,7 @@ Sitemap: <t t-esc="url_root"/>sitemap.xml
 <template id="website_search_box" name="Website Searchbox">
     <div t-attf-class="input-group #{_classes}" role="search">
         <t t-set="search_placeholder">Search...</t>
-        <input type="search" name="search" t-att-class="'search-query form-control oe_search_box %s %s' % (_input_classes or '', '' if default_style else 'border-0 bg-light')" t-att-placeholder="placeholder if placeholder else search_placeholder" t-att-value="search"/>
+        <input type="search" name="search" t-att-class="'search-query form-control oe_search_box %s %s' % (_input_classes or '', '' if default_style else 'border-0 bg-light')" t-att-placeholder="placeholder if placeholder else search_placeholder" t-att-value="search"  t-att-data-placeholder="placeholder"/>
         <button type="submit" t-att-class="'btn oe_search_button %s' % (_submit_classes or ('btn-primary' if default_style else 'btn-light'))" aria-label="Search" title="Search">
             <i class="oi oi-search"/>
             <span t-if="search" class="oe_search_found">
@@ -2856,11 +2856,13 @@ Sitemap: <t t-esc="url_root"/>sitemap.xml
 <!-- Search Bar input-group template -->
 <template id="website_search_box_input" inherit_id="website.website_search_box" primary="True">
     <xpath expr="//input[@name='search']" position="attributes">
+        <attribute name="t-att-data-search-template">search_template</attribute>
         <attribute name="t-att-data-search-type">search_type</attribute>
         <attribute name="t-att-data-limit">limit or '5'</attribute>
         <attribute name="t-att-data-display-image">display_image or 'true'</attribute>
         <attribute name="t-att-data-display-description">display_description or 'true'</attribute>
         <attribute name="t-att-data-display-extra-link">display_extra_link or 'true'</attribute>
+        <attribute name="t-att-data-display-extra-info">display_extra_info or 'true'</attribute>
         <attribute name="t-att-data-display-detail">display_detail or 'true'</attribute>
         <attribute name="t-att-data-order-by">order_by or 'name asc'</attribute>
     </xpath>

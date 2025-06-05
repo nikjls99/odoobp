@@ -65,6 +65,13 @@ options.registry.SearchBar = options.Class.extend({
     // Private
     //--------------------------------------------------------------------------
 
+    setPlaceholder(previewMode, widgetValue, params) {
+        if (this.searchInputEl) {
+            this.searchInputEl.setAttribute("placeholder", widgetValue);
+            this.searchInputEl.dataset.placeholder = widgetValue;
+        }
+    },
+
     /**
      * @override
      */
@@ -73,6 +80,9 @@ options.registry.SearchBar = options.Class.extend({
             const searchInputIsLight = this.searchInputEl.matches(".border-0.bg-light");
             const searchButtonIsLight = this.searchButtonEl.matches(".btn-light");
             return searchInputIsLight && searchButtonIsLight ? "light" : "default";
+        }
+        if (methodName === "setPlaceholder") {
+            return this.searchInputEl?.getAttribute("placeholder") || "";
         }
         return this._super(...arguments);
     },

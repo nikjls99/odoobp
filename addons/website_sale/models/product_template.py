@@ -30,6 +30,14 @@ class ProductTemplate(models.Model):
 
     #=== DEFAULT METHODS ===#
 
+    rating_ids = fields.One2many(
+        comodel_name='rating.rating',
+        inverse_name='res_id',
+        domain=lambda self: [('res_model', '=', 'product.template')],
+        string='Ratings',
+        groups="base.group_user,base.group_portal,base.group_public",  # ← Make it readable by portal/public
+    )
+
     @api.model
     def _default_website_sequence(self):
         """ We want new product to be the last (highest seq).
@@ -746,6 +754,7 @@ class ProductTemplate(models.Model):
         with_image = options['displayImage']
         with_description = options['displayDescription']
         with_category = options['displayExtraLink']
+        with_extraInfo = options.get('displayExtraInfo', False)
         with_price = options['displayDetail']
         domains = [website.sale_product_domain()]
         category = options.get('category')
@@ -788,6 +797,10 @@ class ProductTemplate(models.Model):
             mapping['detail_strike'] = {'name': 'list_price', 'type': 'html', 'display_currency': options['display_currency']}
         if with_category:
             mapping['extra_link'] = {'name': 'category', 'type': 'html'}
+        if with_extraInfo:
+            search_fields.append('rating_ids.feedback')
+            fetch_fields.append('rating_ids')
+            mapping['display_extra_info'] = {'name': 'rating_ids', 'type': 'text', 'match': True}
         return {
             'model': 'product.template',
             'base_domain': domains,
