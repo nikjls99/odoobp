@@ -1,4 +1,8 @@
-import { insertSnippet, registerWebsitePreviewTour } from "@website/js/tours/tour_utils";
+import {
+    insertSnippet,
+    openLinkPopup,
+    registerWebsitePreviewTour,
+} from "@website/js/tours/tour_utils";
 import { patch } from "@web/core/utils/patch";
 
 // Opening the system's file selector is not possible programmatically, so we
@@ -38,34 +42,38 @@ registerWebsitePreviewTour(
             id: "s_banner",
             groupName: "Intro",
         }),
+        patchStep,
+        ...openLinkPopup(`:iframe #wrap .s_banner a:nth-child(1)`, "Start Now", 1, true),
         {
-            content: "Click on button Start Now",
-            trigger: ":iframe #wrap .s_banner a:nth-child(1)",
+            content: "Popover should be shown",
+            trigger: '.o-we-linkpopover .o_we_url_link:contains("Contact Us")',
+        },
+        {
+            trigger: ".o-we-linkpopover .o_we_edit_link",
             run: "click",
         },
-        patchStep,
+        {
+            trigger: ".o-we-linkpopover .o_we_href_input_link",
+            run: "edit ",
+        },
         {
             content: "Click on link to an uploaded document",
-            trigger: ".o_url_input .o_we_user_value_widget.fa.fa-upload",
+            trigger: ".o-we-linkpopover .o_we_href_input_link ~ span > button",
+            run: "click",
+        },
+        {
+            content: "Save the link by clicking on Apply button",
+            trigger: ".o-we-linkpopover .o_we_apply_link",
             run: "click",
         },
         {
             content: "Check if a document link is created",
-            trigger: ":iframe #wrap .s_banner .oe_edited_link[href^='/web/content']",
+            trigger: ":iframe #wrap .s_banner a:nth-child(1)[href^='/web/content']",
         },
         unpatchStep,
         {
             content: "Check if by default the option auto-download is enabled",
-            trigger: ":iframe #wrap .s_banner .oe_edited_link[href$='download=true']",
-        },
-        {
-            content: "Deactivate direct download",
-            trigger: ".o_switch > we-checkbox[name='direct_download']",
-            run: "click",
-        },
-        {
-            content: "Check if auto-download is disabled",
-            trigger: ":iframe #wrap .s_banner .oe_edited_link:not([href$='download=true'])",
+            trigger: ":iframe #wrap .s_banner a:nth-child(1)[href$='download=true']",
         },
     ]
 );

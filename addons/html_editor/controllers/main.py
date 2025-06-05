@@ -598,7 +598,7 @@ class HTML_Editor(http.Controller):
 
             if not last_segment.isnumeric():
                 # this could be a frontend or an external page
-                link_preview_data = self.link_preview_metadata(preview_url)
+                link_preview_data = link_preview.get_link_preview_from_url(preview_url)
                 result = {}
                 if link_preview_data and link_preview_data.get('og_description'):
                     result['description'] = link_preview_data['og_description']
