@@ -311,12 +311,17 @@ export class Rtc extends Record {
         compute() {
             return callActionsRegistry
                 .getEntries()
-                .filter(([key, action]) => action.condition({ rtc: this }))
-                .map(([key, action]) => [key, action.isActive({ rtc: this })]);
+                .filter(([key, action]) => {
+                    return action.condition({ rtc: this });
+                })
+                .map(([key, action]) => [key, action.isActive({ rtc: this }), action.isTracked]);
         },
         onUpdate() {
-            for (const [key, isActive] of this.callActions) {
+            for (const [key, isActive, isTracked] of this.callActions) {
                 if (isActive === this.lastActions[key]) {
+                    continue;
+                }
+                if (!isTracked) {
                     continue;
                 }
                 if (isActive) {
@@ -1490,6 +1495,7 @@ export class Rtc extends Record {
         this.state.cameraTrack?.stop();
         this.state.screenTrack?.stop();
         this.state.fallbackMode = undefined;
+        this.pipService?.closePip();
         closeStream(this.state.sourceCameraStream);
         this.state.sourceCameraStream = null;
         closeStream(this.state.sourceScreenStream);
@@ -2069,6 +2075,7 @@ export const rtcService = {
     dependencies: [
         "bus_service",
         "discuss.p2p",
+        "discuss.native_pip",
         "discuss.ptt_extension",
         "mail.sound_effects",
         "mail.store",
@@ -2083,6 +2090,7 @@ export const rtcService = {
     start(env, services) {
         const rtc = env.services["mail.store"].rtc;
         rtc.p2pService = services["discuss.p2p"];
+        rtc.pipService = services["discuss.native_pip"];
         rtc.p2pService.acceptOffer = async (id, sequence) => {
             const session = await this.store["discuss.channel.rtc.session"].getWhenReady(
                 Number(id)

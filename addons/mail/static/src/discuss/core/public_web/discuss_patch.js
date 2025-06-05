@@ -10,5 +10,6 @@ patch(Discuss.prototype, {
     setup() {
         super.setup(...arguments);
         this.rtc = useService("discuss.rtc");
+        this.nativePip = useService("discuss.native_pip");
     },
 });
