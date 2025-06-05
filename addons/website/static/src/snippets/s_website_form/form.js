@@ -745,6 +745,7 @@ export class Form extends Interaction {
         } else {
             format = localization.dateFormat;
             xYearAgo.setHours(0, 0, 0, 0);
+            currentDate.setHours(0, 0, 0, 0);
         }
         // Date & Date Time comparison requires formatting the value
         const dateTime = DateTime.fromFormat(value, format);
@@ -774,7 +775,7 @@ export class Form extends Interaction {
             case "lessyears":
                 xYearAgo.setFullYear(currentDate.getFullYear() - comparable);
                 value = new Date(value * 1000);
-                return value > xYearAgo;
+                return value > xYearAgo && value <= currentDate;
         }
     }
 
