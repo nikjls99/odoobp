@@ -1372,7 +1372,6 @@ class TestNoThread(MailCommon, TestRecipients):
 
         message = self.env['mail.message'].create({
             'model': test_record._name,
-            'record_name': 'Not used in message _to_store',
             'res_id': test_record.id,
         })
         formatted = Store(message, for_current_user=True).get_result()["mail.message"][0]
