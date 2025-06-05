@@ -571,11 +571,21 @@ class SaleOrder(models.Model):
         """
         self.ensure_one()
         points = coupon.points
-        if coupon.program_id.applies_on != 'future' and self.state not in ('sale', 'done'):
-            # Points that will be given by the order upon confirming the order
-            points += self.coupon_point_ids.filtered(lambda p: p.coupon_id == coupon).points
-        # Points already used by rewards
-        points -= sum(self.order_line.filtered(lambda l: l.coupon_id == coupon).mapped('points_cost'))
+        used_points = sum(
+            self.order_line.filtered(lambda l: l.coupon_id == coupon).mapped('points_cost')
+        )
+
+        if coupon.program_id.applies_on != 'future':
+            if self.state not in ('sale', 'done'):
+                # Points that will be given by the order upon confirming the order
+                points += self.coupon_point_ids.filtered(lambda p: p.coupon_id == coupon).points
+            else:
+                initial_points = coupon.program_id.rule_ids.reward_point_amount
+                used_points = min(
+                    used_points, max(0, used_points - (initial_points - coupon.points))
+                )
+
+        points -= used_points
         points = coupon.currency_id.round(points)
         return points
 
