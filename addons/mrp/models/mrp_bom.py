@@ -48,6 +48,8 @@ class MrpBom(models.Model):
         'uom.uom', 'Unit',
         default=_get_default_product_uom_id, required=True,
         help="Unit of Measure (Unit of Measure) is the unit of measurement for the inventory control")
+    component_qty = fields.Float('Component Quantity', compute='_compute_component_qty')
+    component_uom_id = fields.Many2one('uom.uom', 'Component UoM', compute='_compute_component_uom_id')
     sequence = fields.Integer('Sequence')
     operation_ids = fields.One2many('mrp.routing.workcenter', 'bom_id', 'Operations', copy=True)
     ready_to_produce = fields.Selection([
@@ -104,6 +106,32 @@ class MrpBom(models.Model):
     def _compute_possible_product_template_attribute_value_ids(self):
         for bom in self:
             bom.possible_product_template_attribute_value_ids = bom.product_tmpl_id.valid_product_template_attribute_line_ids.product_template_value_ids._only_active()
+
+    @api.depends('bom_line_ids')
+    def _compute_component_qty(self):
+        active_ids = self.env.context.get('active_ids')
+        active_model = self.env.context.get('active_model')
+        for bom in self:
+            if active_model == 'product.template':
+                bom_lines = bom.bom_line_ids.filtered(lambda bl: bl.product_tmpl_id.id in active_ids)
+            elif active_model == 'product.product':
+                bom_lines = bom.bom_line_ids.filtered(lambda bl: bl.product_id.id in active_ids)
+            else:
+                bom_lines = bom.bom_line_ids
+            bom.component_qty = sum(bom_lines.mapped('product_qty'))
+
+    @api.depends('bom_line_ids')
+    def _compute_component_uom_id(self):
+        active_ids = self.env.context.get('active_ids')
+        active_model = self.env.context.get('active_model')
+        for bom in self:
+            if active_model == 'product.template':
+                bom_lines = bom.bom_line_ids.filtered(lambda bl: bl.product_tmpl_id.id in active_ids)
+            elif active_model == 'product.product':
+                bom_lines = bom.bom_line_ids.filtered(lambda bl: bl.product_id.id in active_ids)
+            else:
+                bom_lines = bom.bom_line_ids
+            bom.component_uom_id = bom_lines[0].mapped('product_uom_id')
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
