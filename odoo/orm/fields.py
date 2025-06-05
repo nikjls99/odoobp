@@ -73,6 +73,11 @@ def determine(needle, records: BaseModel, *args):
     if isinstance(needle, str):
         needle = getattr(records, needle)
         if needle.__name__.find('__'):
+            # if records._name in ('account.payment.register', 'account.payment.register.withholding.line'):
+            #     record_names = f'{records!s:<100}'
+            #     compute_name = f'{needle.__name__!s:<40}'
+            #     depends = f'{(needle._depends if hasattr(needle, "_depends") else None)!s:<50}'
+            #     print(record_names, compute_name, depends)
             return needle(*args)
     elif callable(needle):
         if needle.__name__.find('__'):
