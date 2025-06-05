@@ -335,7 +335,7 @@ test.tags("desktop");
 test("SelectCreateDialog list view is readonly", async () => {
     Partner._fields.sequence = fields.Integer();
     Partner._views["list"] = /* xml */ `
-        <list string="Partner" editable="bottom">
+        <list string="Partner" editable="bottom" multi_edit="1">
             <field name="sequence" widget="handle"/>
             <field name="name"/>
             <field name="foo"/>

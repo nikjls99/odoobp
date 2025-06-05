@@ -1079,7 +1079,10 @@ export class ListRenderer extends Component {
             record = this.props.list.records[recordIndex] || record;
         };
 
-        if ((this.props.list.model.multiEdit && record.selected) || this.isInlineEditable(record)) {
+        if (
+            (this.props.list.model.multiEdit && record.selected && !this.props.readonly) ||
+            this.isInlineEditable(record)
+        ) {
             if (record.isInEdition && this.editedRecord === record) {
                 const cell = this.tableRef.el.querySelector(
                     `.o_selected_row td[name='${column.name}']`
