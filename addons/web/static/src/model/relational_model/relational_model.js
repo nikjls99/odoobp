@@ -116,7 +116,6 @@ export class RelationalModel extends Model {
     static DEFAULT_GROUP_LIMIT = 80;
     static DEFAULT_OPEN_GROUP_LIMIT = 10;
     static MAX_NUMBER_OPENED_GROUPS = 10;
-    static withCache = true;
 
     /**
      * @param {RelationalModelParams} params
@@ -197,7 +196,7 @@ export class RelationalModel extends Model {
         let cached;
         const def = new Deferred();
         if (
-            this.constructor.withCache &&
+            this.env.config.actionCache &&
             (!this.isReady ||
                 (config.isMonoRecord && (!config.resId || this.root.config.resId !== config.resId)))
             //TODO: Maybe we should update the cache when this.isReady (if the key exists in indexedDB)
@@ -205,58 +204,35 @@ export class RelationalModel extends Model {
             cached = {
                 onUpdate: async (result) => {
                     await def;
-                    if (root) {
-                        if (root.id !== this.root.id) {
-                            // The root that we want to update is not the current one
-                            console.log("JPP: Different roots !");
-                            if (this.useSampleModel && result.length > 0) {
-                                console.log("disabling sample data");
-                                this.useSampleModel = false;
-                                this.root._setData(result);
-                            } else {
-                                return;
-                            }
+                    if (root.id !== this.root.id) {
+                        // The root that we want to update is not the current one
+                        if (this.useSampleModel && result.length > 0) {
+                            this.useSampleModel = false;
+                            this.root._setData(result);
+                        } else {
+                            return;
                         }
-                        if (root.config.isMonoRecord) {
-                            // new Record
-                            if (!root.config.resId) {
-                                console.log("JPP: update new Record");
-                                //TODO: change _setData to pass option keepChanges to True !
-                                return root._setData(result.value);
-                            }
-                            // Record
-                            if (!result.length) {
-                                throw new FetchRecordError([root.config.resId]);
-                            }
-                            console.log("JPP: update mono-record");
-                            //TODO: maybe here also !
-                            return root._setData(result[0]);
-                        }
-
-                        // if (root.config.resIds) {
-                        //     // static_list
-                        //     console.log("JPP: update static_list");
-                        //     return;
-                        // }
-                        // // dynamic_group_list are not cached for the moment !
-                        // if (this.config.groupBy.length) {
-                        //     // dynamic_group_list
-                        //     console.log("dynamic_group_list");
-                        //     return;
-                        // }
-
-                        // dynamic_record_list
-                        console.log("JPP: update dynamic_record_list");
-                        root._setData(result);
-                        return;
                     }
-                    //TODO: Not needed !!!
-                    console.warn("JPP: root don't exists");
+                    if (root.config.isMonoRecord) {
+                        // new Record
+                        if (!root.config.resId) {
+                            //TODO: change _setData to pass option keepChanges to True !
+                            return root._setData(result.value);
+                        }
+                        // Record
+                        if (!result.length) {
+                            throw new FetchRecordError([root.config.resId]);
+                        }
+                        //TODO: maybe here also !
+                        return root._setData(result[0]);
+                    }
+
+                    // dynamic_record_list
+                    root._setData(result);
                 },
             };
         }
         const data = await this.keepLast.add(this._loadData(config, cached));
-        //TODO: Assignments Chaining ?
         root = this._createRoot(config, data);
         this.root = root;
         def.resolve();
