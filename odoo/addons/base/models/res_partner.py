@@ -61,6 +61,15 @@ class FormatVATLabelMixin(models.AbstractModel):
                 node.set("string", vat_label)
         return arch, view
 
+    @api.model
+    def _get_view_cache_key(self, view_id=None, view_type='form', **options):
+        """The override of _get_view, changes the view
+        according to the vat label associated to the user's company country,
+        and makes the view cache dependent on this field.
+        and makes the view cache dependent on this field."""
+        key = super()._get_view_cache_key(view_id, view_type, **options)
+        return key + (self.env.company.country_id.vat_label,)
+
 class FormatAddressMixin(models.AbstractModel):
     _name = "format.address.mixin"
     _description = 'Address Format'
